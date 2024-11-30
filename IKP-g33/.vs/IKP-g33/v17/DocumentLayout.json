@@ -1,14 +1,14 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\Korisnik\\Desktop\\Ikp-memory-manager\\IKP-g33\\",
+  "WorkspaceRootPath": "C:\\Users\\drljo\\Desktop\\IKP-g33\\IKP-g33\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{CA2ADFBF-998B-4C04-87E6-1E2539BE7B60}|Client\\Client.vcxproj|C:\\Users\\Korisnik\\Desktop\\Ikp-memory-manager\\IKP-g33\\Client\\Client.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{CA2ADFBF-998B-4C04-87E6-1E2539BE7B60}|Client\\Client.vcxproj|solutionrelative:Client\\Client.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{13E9C85A-D7A3-4493-B67D-1C8CA11F9976}|HeapManager\\HeapManager.vcxproj|C:\\Users\\drljo\\Desktop\\IKP-g33\\IKP-g33\\HeapManager\\HashMap.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{13E9C85A-D7A3-4493-B67D-1C8CA11F9976}|HeapManager\\HeapManager.vcxproj|solutionrelative:HeapManager\\HashMap.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{BF342B81-45E4-4E62-8B85-8E4EEAFD94D2}|Server\\Server.vcxproj|C:\\Users\\Korisnik\\Desktop\\Ikp-memory-manager\\IKP-g33\\Server\\Server.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{BF342B81-45E4-4E62-8B85-8E4EEAFD94D2}|Server\\Server.vcxproj|solutionrelative:Server\\Server.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{13E9C85A-D7A3-4493-B67D-1C8CA11F9976}|HeapManager\\HeapManager.vcxproj|C:\\Users\\drljo\\Desktop\\IKP-g33\\IKP-g33\\HeapManager\\HashMap.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{13E9C85A-D7A3-4493-B67D-1C8CA11F9976}|HeapManager\\HeapManager.vcxproj|solutionrelative:HeapManager\\HashMap.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     }
   ],
   "DocumentGroupContainers": [
@@ -18,32 +18,40 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 3,
           "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "Server.cpp",
-              "DocumentMoniker": "C:\\Users\\Korisnik\\Desktop\\Ikp-memory-manager\\IKP-g33\\Server\\Server.cpp",
-              "RelativeDocumentMoniker": "Server\\Server.cpp",
-              "ToolTip": "C:\\Users\\Korisnik\\Desktop\\Ikp-memory-manager\\IKP-g33\\Server\\Server.cpp",
-              "RelativeToolTip": "Server\\Server.cpp",
-              "ViewState": "AgIAAJUAAAAAAAAAAAAswH0AAAAgAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2024-11-28T10:59:59.199Z",
+              "Title": "HashMap.h",
+              "DocumentMoniker": "C:\\Users\\drljo\\Desktop\\IKP-g33\\IKP-g33\\HeapManager\\HashMap.h",
+              "RelativeDocumentMoniker": "HeapManager\\HashMap.h",
+              "ToolTip": "C:\\Users\\drljo\\Desktop\\IKP-g33\\IKP-g33\\HeapManager\\HashMap.h",
+              "RelativeToolTip": "HeapManager\\HashMap.h",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAB4AAAAQAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
+              "WhenOpened": "2024-11-30T17:05:36.752Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "Client.cpp",
-              "DocumentMoniker": "C:\\Users\\Korisnik\\Desktop\\Ikp-memory-manager\\IKP-g33\\Client\\Client.cpp",
-              "RelativeDocumentMoniker": "Client\\Client.cpp",
-              "ToolTip": "C:\\Users\\Korisnik\\Desktop\\Ikp-memory-manager\\IKP-g33\\Client\\Client.cpp",
-              "RelativeToolTip": "Client\\Client.cpp",
-              "ViewState": "AgIAAIQAAAAAAAAAAAAmwI8AAAACAAAAAAAAAA==",
+              "Title": "HashMap.cpp",
+              "DocumentMoniker": "C:\\Users\\drljo\\Desktop\\IKP-g33\\IKP-g33\\HeapManager\\HashMap.cpp",
+              "RelativeDocumentMoniker": "HeapManager\\HashMap.cpp",
+              "ToolTip": "C:\\Users\\drljo\\Desktop\\IKP-g33\\IKP-g33\\HeapManager\\HashMap.cpp",
+              "RelativeToolTip": "HeapManager\\HashMap.cpp",
+              "ViewState": "AgIAAAMAAAAAAAAAAAAAABYAAAAQAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2024-11-28T10:59:19.681Z",
+              "WhenOpened": "2024-11-30T17:03:44.699Z",
               "EditorCaption": ""
             }
           ]
