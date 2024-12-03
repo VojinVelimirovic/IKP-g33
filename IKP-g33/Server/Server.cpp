@@ -25,14 +25,18 @@ int main()
 	initialize_segments(5);
 
 	// Allocate memory of 256 bytes
-	void* allocatedMemory = allocate_memory(256);
-	if (allocatedMemory != NULL) {
-		printf("Memory allocated at address: %p\n", allocatedMemory);
+	void* allocatedBlock = allocate_memory(256);
+	if (allocatedBlock != NULL) {
+		printf("Memory block allocated at start address: %p\n", allocatedBlock);
 	}
 	else {
 		printf("Memory allocation failed.\n");
 	}
 
+
+
+
+	// finish
 	// Clean up resources
 	cleanup_segments();
 

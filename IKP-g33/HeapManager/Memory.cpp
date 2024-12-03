@@ -41,16 +41,42 @@ int firstFit(int blockSize) {
     return (int)NULL;
 }
 
+// funckija za alociranje BLOKA - vraca adresu pocetka bloka 
 void* allocate_memory(int size) {
     int address = firstFit(size);
     if (address == (int)NULL) {
         return NULL; // Memory allocation failed
     }
 
-    //TODO: malloc(address, size)
+    if (baseMemoryBlock == NULL) {
+        return;
+    }
 
-    return (void*)address; // Cast the address to a pointer
+    // offset
+    void* allocatedMemory = (void*)((char*)baseMemoryBlock + (address - (int)baseMemoryBlock));
+    
+    // Inicijalizacija memorije na 0 - ne znam da li treba, posto nista ne upisujemo
+    memset(allocatedMemory, 0, size);
+
+    // TODO: Add to dict <key, value> = <address, size>
+
+    return (void*)address;
 }
+
+// funckija oslobadja BLOK na datoj adresi
+void free_memory(void* address) {
+    if (!address) {
+        printf("Invalid memory address.\n");
+        return;
+    }
+
+    // Calculate the starting segment index from the given address
+    int startAddress = (int)address;
+
+    // TODO: Check if address exists in dict <key, value> = <adress, size>
+    // TODO: Remove address from keys <key, value> = <adress, size>
+}
+
 
 void initialize_segments(int numSegments) {
     segmentCount = numSegments;
@@ -82,10 +108,10 @@ void initialize_segments(int numSegments) {
     }
 }
 
-// Cleanup memory segments
+// Funckija koja oslobadja sve segmente
 void cleanup_segments() {
     for (int i = 0; i < segmentCount; i++) {
         CloseHandle(segments[i].mutex); // Close each mutex handle
     }
-    free(segments); // Free the memory allocated for segments
+    free(segments);
 }
