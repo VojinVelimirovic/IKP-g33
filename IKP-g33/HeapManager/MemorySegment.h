@@ -5,7 +5,7 @@
 
 // Memorija je organizovana u segmente predefinisane velicine
 typedef struct MemorySegment {
-	long address;
+	int address;
 	bool isFree;
 	HANDLE mutex;		// zakljucati segment dok se upisuje u njega - kriticka sekcija
 }TMemorySegment;
@@ -13,7 +13,7 @@ typedef struct MemorySegment {
 
 // Klijentske metode barataju sa BLOKOVIMA
 typedef struct Block {
-	long start_address;
+	int start_address;
 	int size;				// treba ili size 
 	int segments_taken;		// ili segments_taken
 }TBlock;

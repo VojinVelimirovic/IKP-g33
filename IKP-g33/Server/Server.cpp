@@ -8,6 +8,9 @@
 #include <stdio.h>
 #include "conio.h"
 
+#include "../HeapManager/MemorySegment.h"
+#include "../HeapManager/Memory.h"
+
 #pragma comment (lib, "Ws2_32.lib")
 #pragma comment (lib, "Mswsock.lib")
 #pragma comment (lib, "AdvApi32.lib")
@@ -18,25 +21,33 @@
 // TCP server that use blocking sockets
 int main()
 {
-	// Socket used for listening for new clients 
+
+	initialize_segments(5);
+
+	// Allocate memory of 256 bytes
+	void* allocatedMemory = allocate_memory(256);
+	if (allocatedMemory != NULL) {
+		printf("Memory allocated at address: %p\n", allocatedMemory);
+	}
+	else {
+		printf("Memory allocation failed.\n");
+	}
+
+	// Clean up resources
+	cleanup_segments();
+
+	//return 0;
+
+
+
+
+
 	SOCKET listenSocket = INVALID_SOCKET;
-
-	// Socket used for communication with clients
 	SOCKET acceptedSocket = INVALID_SOCKET;
-
-	// Variable used to store function return value
 	int iResult;
-	
-
-
-	// Buffer used for storing incoming data
 	char dataBuffer[BUFFER_SIZE];
-	
 
-	// WSADATA data structure that is to receive details of the Windows Sockets implementation
 	WSADATA wsaData;
-
-	// Initialize windows sockets library for this process
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
 	{
 		printf("WSAStartup failed with error: %d\n", WSAGetLastError());
