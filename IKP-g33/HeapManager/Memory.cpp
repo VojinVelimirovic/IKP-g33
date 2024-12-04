@@ -2,9 +2,11 @@
 #include <stdlib.h>
 #include "MemorySegment.h"
 #include "Memory.h"
+#include "HashMap.h"
 
 // Global variables
 TMemorySegment* segments = NULL;
+struct hashMap memoryMap;
 int segmentCount = 0;
 void* baseMemoryBlock = NULL; // Pointer to the base memory block
 
@@ -58,7 +60,12 @@ void* allocate_memory(int size) {
     // Inicijalizacija memorije na 0 - ne znam da li treba, posto nista ne upisujemo
     memset(allocatedMemory, 0, size);
 
-    // TODO: Add to dict <key, value> = <address, size>
+    // Calculate required segments
+    int requiredSegments = (size + SEGMENT_SIZE - 1) / SEGMENT_SIZE;
+
+    // Insert into the hash map
+    struct MemorySegment segment = { address, false, NULL };
+    insertIntoHashMap(&memoryMap, address, segment, size, requiredSegments);
 
     return (void*)address;
 }
@@ -73,8 +80,23 @@ void free_memory(void* address) {
     // Calculate the starting segment index from the given address
     int startAddress = (int)address;
 
-    // TODO: Check if address exists in dict <key, value> = <adress, size>
-    // TODO: Remove address from keys <key, value> = <adress, size>
+    // Search for the memory segment in the hash map
+    struct node* node = searchHashMap(&memoryMap, startAddress);
+    if (!node) {
+        printf("Memory address not found in hash map.\n");
+        return;
+    }
+
+    // Mark associated segments as free
+    int startSegmentIndex = (startAddress - (int)baseMemoryBlock) / SEGMENT_SIZE;
+    int segmentsToFree = node->segmentsTaken;
+
+    for (int i = startSegmentIndex; i < startSegmentIndex + segmentsToFree; i++) {
+        segments[i].isFree = true;
+    }
+
+    // Remove the memory record from the hash map
+    removeFromHashMap(&memoryMap, startAddress);
 }
 
 
@@ -106,6 +128,8 @@ void initialize_segments(int numSegments) {
             exit(EXIT_FAILURE);
         }
     }
+
+    initializeHashMap(&memoryMap, 10);
 }
 
 // Funckija koja oslobadja sve segmente
@@ -114,4 +138,16 @@ void cleanup_segments() {
         CloseHandle(segments[i].mutex); // Close each mutex handle
     }
     free(segments);
+    free(baseMemoryBlock);
+
+    // Oslobadjanje hashmape
+    for (int i = 0; i < memoryMap.capacity; i++) {
+        struct node* current = memoryMap.arr[i];
+        while (current) {
+            struct node* temp = current;
+            current = current->next;
+            free(temp);
+        }
+    }
+    free(memoryMap.arr);
 }

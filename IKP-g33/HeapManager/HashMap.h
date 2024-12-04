@@ -7,10 +7,12 @@
 #include <string.h>
 #include "MemorySegment.h"
 
-// Linked List node
+// value koji se cuva u hashmapi
 struct node {
-    long key;         
-    struct MemorySegment segment;
+    int key;
+    int size;                      // ovo  
+    int segmentsTaken;             // treba
+    struct MemorySegment segment;  // opet
     struct node* next; // Pointer to the next node
 };
 
@@ -25,11 +27,11 @@ struct hashMap {
 
 void setNode(struct node* node, char* key, char* value);
 
-void initializeHashMap(struct hashMap* mp);
-void insert(struct hashMap* mp, long key, struct MemorySegment segment);
-void deleteKey(struct hashMap* mp, long key);
-int hashFunction(struct hashMap* mp, char* key);
-struct MemorySegment* searchHashMap(struct hashMap* mp, long key);
+void initializeHashMap(struct hashMap* map, int capacity);
+void  insertIntoHashMap(struct hashMap* map, int key, struct MemorySegment segment, int size, int segmentsTaken);
+void removeFromHashMap(struct hashMap* map, int key);
+struct node* searchHashMap(struct hashMap* map, int key);
 void freeHashMap(struct hashMap* mp);
 
+int hashFunction(struct hashMap* mp, int key);
 #endif // HASHMAP_H

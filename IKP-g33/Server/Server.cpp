@@ -34,15 +34,11 @@ int main()
 	}
 
 
-
-
 	// finish
 	// Clean up resources
 	cleanup_segments();
 
 	//return 0;
-
-
 
 
 

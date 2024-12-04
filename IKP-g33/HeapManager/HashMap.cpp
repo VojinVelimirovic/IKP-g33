@@ -10,65 +10,71 @@
 }*/
 
 // Initializes the hash map
-void initializeHashMap(struct hashMap* hashMap) {
-    hashMap->capacity = 100; // Default capacity
-    hashMap->numOfElements = 0;
-
-    hashMap->arr = (struct node**)malloc(sizeof(struct node*) * hashMap->capacity);
-    for (int i = 0; i < hashMap->capacity; i++) {
-        hashMap->arr[i] = NULL; // Initialize buckets to NULL
+void initializeHashMap(struct hashMap* map, int capacity) {
+    map->numOfElements = 0;
+    map->capacity = capacity;
+    map->arr = (struct node**)malloc(capacity * sizeof(struct node*));
+    if (!map->arr) {
+        printf("Failed to allocate memory for hash map buckets.\n");
+        exit(EXIT_FAILURE);
     }
-}
-
-int hashFunction(struct hashMap* mp, long key) {
-    return key % mp->capacity; // Return bucket index based on the address
+    for (int i = 0; i < capacity; i++) {
+        map->arr[i] = NULL;
+    }
 }
 
 
 // Inserts a key-value pair into the hash map
-void insert(struct hashMap* mp, long key, struct MemorySegment segment) {
-    int bucketIndex = hashFunction(mp, key);
+void insertIntoHashMap(struct hashMap* map, int key, struct MemorySegment segment, int size, int segmentsTaken) {
+    int bucketIndex = hashFunction(key, map->capacity);
     struct node* newNode = (struct node*)malloc(sizeof(struct node));
-    
-    newNode->key = key; // Set the key (address)
-    newNode->segment = segment; // Set the MemorySegment
-    newNode->next = mp->arr[bucketIndex]; // Insert at the beginning
-    mp->arr[bucketIndex] = newNode;
+    if (!newNode) {
+        printf("Failed to allocate memory for new hash map node.\n");
+        exit(EXIT_FAILURE);
+    }
+    newNode->key = key;
+    newNode->segment = segment;
+    newNode->size = size;
+    newNode->segmentsTaken = segmentsTaken;
+    newNode->next = map->arr[bucketIndex];
+    map->arr[bucketIndex] = newNode;
+    map->numOfElements++;
 }
 
-// Deletes a key from the hash map
-void deleteKey(struct hashMap* mp, long key) {
-    int bucketIndex = hashFunction(mp, key);
-    struct node* prevNode = NULL;
-    struct node* currNode = mp->arr[bucketIndex];
+struct node* searchHashMap(struct hashMap* map, int key) {
+    int bucketIndex = hashFunction(key, map->capacity);
+    struct node* current = map->arr[bucketIndex];
+    while (current) {
+        if (current->key == key) {
+            return current;
+        }
+        current = current->next;
+    }
+    return NULL; // Key not found
+}
 
-    while (currNode != NULL) {
-        if (currNode->key == key) {
-            if (prevNode == NULL) { // Head node
-                mp->arr[bucketIndex] = currNode->next;
+
+void removeFromHashMap(struct hashMap* map, int key) {
+    int bucketIndex = hashFunction(key, map->capacity);
+    struct node* current = map->arr[bucketIndex];
+    struct node* prev = NULL;
+
+    while (current) {
+        if (current->key == key) {
+            if (prev) {
+                prev->next = current->next;
             }
             else {
-                prevNode->next = currNode->next; // Bypass the node
+                map->arr[bucketIndex] = current->next;
             }
-            free(currNode); // Free the node
+            free(current);
+            map->numOfElements--;
             return;
         }
-        prevNode = currNode;
-        currNode = currNode->next;
+        prev = current;
+        current = current->next;
     }
-}
-
-// Searches for a MemorySegment by address in the hash map
-struct MemorySegment* searchHashMap(struct hashMap* mp, long key) {
-    int bucketIndex = hashFunction(mp, key);
-    struct node* bucketHead = mp->arr[bucketIndex];
-    while (bucketHead != NULL) {
-        if (bucketHead->key == key) {
-            return &bucketHead->segment; // Return the MemorySegment
-        }
-        bucketHead = bucketHead->next;
-    }
-    return NULL; // Not found
+    printf("Key %ld not found in hash map.\n", key);
 }
 
 // Frees the memory allocated for the hash map
@@ -82,4 +88,9 @@ void freeHashMap(struct hashMap* mp) {
         }
     }
     free(mp->arr); // Free the array of pointers
+}
+
+
+int hashFunction(int key, int capacity) {
+    return key % capacity;
 }

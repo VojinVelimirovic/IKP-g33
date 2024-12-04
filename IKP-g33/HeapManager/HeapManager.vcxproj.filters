@@ -35,9 +35,6 @@
     <ClCompile Include="HashMap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="MemorySegment.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Memory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

@@ -135,7 +135,6 @@
   <ItemGroup>
     <ClCompile Include="HashMap.cpp" />
     <ClCompile Include="Memory.cpp" />
-    <ClCompile Include="MemorySegment.cpp" />
     <ClCompile Include="Queue.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
