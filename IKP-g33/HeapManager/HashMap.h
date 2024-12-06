@@ -7,31 +7,22 @@
 #include <string.h>
 #include "MemorySegment.h"
 
-// value koji se cuva u hashmapi
-struct node {
-    int key;
-    int size;                      // ovo  
-    int segmentsTaken;             // treba
-    struct MemorySegment segment;  // opet
-    struct node* next; // Pointer to the next node
-};
 
-// Hash Map structure
-struct hashMap {
-    int numOfElements; // Current number of elements in the hash map
-    int capacity;      // Capacity of the hash map
-    struct node** arr; // Array of pointers to linked lists (buckets)
-};
+typedef struct HashMapEntry {
+    int key;               // Integer key (address of the block)
+    void* value;           // Pointer to the value (Block or int*)
+    struct HashMapEntry* next; // For collision resolution (chaining)
+} HashMapEntry;
 
-// Function declarations
+typedef struct HashMap {
+    int size;                  // Size of the hash table
+    HashMapEntry** table;      // Array of pointers to HashMapEntry
+} HashMap;
 
-void setNode(struct node* node, char* key, char* value);
-
-void initializeHashMap(struct hashMap* map, int capacity);
-void  insertIntoHashMap(struct hashMap* map, int key, struct MemorySegment segment, int size, int segmentsTaken);
-void removeFromHashMap(struct hashMap* map, int key);
-struct node* searchHashMap(struct hashMap* map, int key);
-void freeHashMap(struct hashMap* mp);
-
-int hashFunction(struct hashMap* mp, int key);
+HashMap* createHashMap(int size);
+void put(HashMap* map, int key, void* value);
+void* get(HashMap* map, int key);
+void deleteHashMap(HashMap* map);
+int findKeyByValue(HashMap* map, intptr_t value);
+void remove(HashMap* map, int key);
 #endif // HASHMAP_H
