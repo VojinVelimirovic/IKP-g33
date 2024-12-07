@@ -8,12 +8,12 @@
 #include <stdio.h>
 #include "conio.h"
 
-#include "../HeapManager/MemorySegment.h"
-#include "../HeapManager/Memory.h"
-
 #pragma comment (lib, "Ws2_32.lib")
 #pragma comment (lib, "Mswsock.lib")
 #pragma comment (lib, "AdvApi32.lib")
+
+#include "../HeapManager/MemorySegment.h"
+#include "../HeapManager/Memory.h"
 
 #define SERVER_PORT 27016
 #define BUFFER_SIZE 256
@@ -22,25 +22,7 @@
 int main()
 {
 
-	initialize_segments(5);
-
-	// Allocate memory of 256 bytes
-	void* allocatedBlock = allocate_memory(256);
-	if (allocatedBlock != NULL) {
-		printf("Memory block allocated at start address: %p\n", allocatedBlock);
-	}
-	else {
-		printf("Memory allocation failed.\n");
-	}
-
-
-	// finish
-	// Clean up resources
-	cleanup_segments();
-
-	//return 0;
-
-
+	initializeMemory(5);
 
 	SOCKET listenSocket = INVALID_SOCKET;
 	SOCKET acceptedSocket = INVALID_SOCKET;
@@ -54,21 +36,19 @@ int main()
 		return 1;
 	}
 
-
 	// Initialize serverAddress structure used by bind
 	sockaddr_in serverAddress;
 	memset((char*)&serverAddress, 0, sizeof(serverAddress));
-	serverAddress.sin_family = AF_INET;				// IPv4 address family
-	serverAddress.sin_addr.s_addr = INADDR_ANY;		// Use all available addresses
-	serverAddress.sin_port = htons(SERVER_PORT);	// Use specific port
-
+	serverAddress.sin_family = AF_INET;
+	serverAddress.sin_addr.s_addr = INADDR_ANY;
+	serverAddress.sin_port = htons(SERVER_PORT);
 
 	// Create a SOCKET for connecting to server
-	listenSocket = socket(AF_INET,      // IPv4 address family
-		SOCK_STREAM,  // Stream socket
-		IPPROTO_TCP); // TCP protocol
+	listenSocket = socket(AF_INET,
+		SOCK_STREAM,
+		IPPROTO_TCP);
 
-// Check if socket is successfully created
+	// Check if socket is successfully created
 	if (listenSocket == INVALID_SOCKET)
 	{
 		printf("socket failed with error: %ld\n", WSAGetLastError());
@@ -117,7 +97,7 @@ int main()
 		return 1;
 	}
 
-	printf("\nFirst client request accepted. Client address: %s : %d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+	printf("\nClient request accepted. Client address: %s : %d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
 		
 	bool allocate = false;
 	do
@@ -147,12 +127,22 @@ int main()
 				closesocket(acceptedSocket);
 				break;
 			}
+
+			// recv size/address
 			iResult = recv(acceptedSocket, dataBuffer, BUFFER_SIZE, 0);
 			if (iResult > 0) {
 				dataBuffer[iResult] = '\0';
 				if (allocate) {
 					printf("Allocating %s bytes...\n", dataBuffer);
 					strcpy_s(dataBuffer, "Successfully allocated memory!\n");
+
+					/*void* allocatedBlock = allocate_memory(128);
+					if (allocatedBlock != NULL) {
+						printf("Memory block allocated at start address: %p\n", allocatedBlock);
+					}
+					else {
+						printf("Memory allocation failed.\n");
+					}*/
 					
 				}
 				else {
@@ -185,23 +175,12 @@ int main()
 		WSACleanup();
 		return 1;
 	}
-
-	// Shutdown the connection since we're done
-
-	// Check if connection is succesfully shut down.
-	if (iResult == SOCKET_ERROR)
-	{
-		printf("shutdown failed with error: %d\n", WSAGetLastError());
-		closesocket(acceptedSocket);
-		WSACleanup();
-		return 1;
-	}
-	//Close listen and accepted sockets
 	closesocket(listenSocket);
 	closesocket(acceptedSocket);
 
-	// Deinitialize WSA library
 	WSACleanup();
 
+	cleanup_segments();
+	
 	return 0;
 }

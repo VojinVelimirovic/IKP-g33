@@ -3,17 +3,6 @@
 #include "HashMap.h"
 #include "Memory.h"
 
-// Global memory and hashmaps
-TMemorySegment* segments = NULL;
-int totalSegments = 0; //trenutan broj segmenata. ovaj broj se menja i nalazi se u ovom fajlu zato sto nam ne treba van njega
-HashMap* blockHashMap = NULL;
-HashMap* blockAddressHashMap = NULL;
-
-//struktura za povratnu vrednost FirstFit-a
-typedef struct FirstFitResult {
-    int startIndex;       // Indeks prvog slobodnog segmenta. Ako nema mesta za blok nakon firstFita on ce biti -1
-    int missingSegments;  // U koliko nema mesta za blok nakon firstFita ovo nam govori koliko segmenata treba dodati na kraju.
-} FirstFitResult;
 
 // Helper: Initialize memory segments
 void initializeMemory(int initialSize) {
@@ -77,7 +66,7 @@ void* allocate_memory(int size) {
         fit.startIndex = totalSegments - fit.missingSegments; //sada kada je prosiren broj segmenata blok moze da se ugura
     }
 
-    // Jedan po jedan od start indexa pa nadalje se zakljucavaju segmenti, menja im se isFree pa se odkljucavaju
+    // Jedan po jedan od start indexa pa nadalje se zakljucavaju segmenti, menja im se isFree pa se otkljucavaju
     for (int i = fit.startIndex; i < fit.startIndex + requiredSegments; i++) {
         WaitForSingleObject(segments[i].mutex, INFINITE);
         segments[i].isFree = false;
@@ -141,7 +130,7 @@ void free_memory(void* address) {
                 // ukoliko postoji on ce se izvuci u affectedBlock i tu cemo mu smanjiti start addresu za 1
                 for (int j = 0; j < totalSegments; j++) {
                     if (segments[j].isFree == false && segments[j].address > i) {
-                        //izbukli smo blok cija se start adresa treba smanjiti za 1
+                        //izvukli smo blok cija se start adresa treba smanjiti za 1
                         TBlock* affectedBlock = (TBlock*)get(blockHashMap, segments[j].address);
                         if (affectedBlock != NULL) {
                             // nasli smo njegovu originalnu adresu
@@ -181,4 +170,66 @@ void free_memory(void* address) {
 
     // za blockAddressHashMap koristimo njegovu originalnu adresu koja je zadata kao argument metode
     remove(blockAddressHashMap, (intptr_t)address);                                         
+}
+
+void cleanup_segments() {
+    // Step 1: Clean up each segment
+    if (segments != NULL) {
+        for (int i = 0; i < totalSegments; i++) {
+            // Close the mutex for each segment
+            if (segments[i].mutex != NULL) {
+                CloseHandle(segments[i].mutex);
+            }
+        }
+        // Free the segments array
+        free(segments);
+        segments = NULL; // Set to NULL to prevent dangling pointers
+    }
+
+    // Step 2: Clean up blockHashMap
+    if (blockHashMap != NULL) {
+        for (int i = 0; i < blockHashMap->size; i++) {
+            HashMapEntry* entry = blockHashMap->table[i];
+            while (entry != NULL) {
+                HashMapEntry* nextEntry = entry->next;
+
+                // Free the block stored in the value (if applicable)
+                TBlock* block = (TBlock*)entry->value;
+                if (block != NULL) {
+                    free(block);
+                }
+
+                // Free the HashMapEntry itself
+                free(entry);
+
+                entry = nextEntry;
+            }
+        }
+        // Free the hash map table and the hash map structure
+        free(blockHashMap->table);
+        free(blockHashMap);
+        blockHashMap = NULL; // Set to NULL to prevent dangling pointers
+    }
+
+    // Step 3: Clean up blockAddressHashMap
+    if (blockAddressHashMap != NULL) {
+        for (int i = 0; i < blockAddressHashMap->size; i++) {
+            HashMapEntry* entry = blockAddressHashMap->table[i];
+            while (entry != NULL) {
+                HashMapEntry* nextEntry = entry->next;
+
+                // Free the HashMapEntry itself
+                free(entry);
+
+                entry = nextEntry;
+            }
+        }
+        // Free the hash map table and the hash map structure
+        free(blockAddressHashMap->table);
+        free(blockAddressHashMap);
+        blockAddressHashMap = NULL; // Set to NULL to prevent dangling pointers
+    }
+
+    // Step 4: Reset the totalSegments counter
+    totalSegments = 0;
 }
