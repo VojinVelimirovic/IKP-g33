@@ -65,7 +65,7 @@ int main()
 		return 1;
 	}
 
-	
+
 	while (strcmp(buffer, "x") != 0)
 	{
 		fseek(stdin, 0, SEEK_END);
@@ -75,7 +75,7 @@ int main()
 		if (strcmp(buffer, "x") == 0) {
 			break;
 		}
-		if (strcmp(buffer, "1") && strcmp(buffer, "2")){
+		if (strcmp(buffer, "1") && strcmp(buffer, "2")) {
 			printf("Invalid option. Please try again.\n");
 			continue;
 		}
@@ -128,7 +128,7 @@ int main()
 			return 1;
 		}
 	}
-	
+
 
 
 	// Shutdown the connection since we're done

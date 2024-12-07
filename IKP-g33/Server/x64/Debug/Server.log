@@ -1,4 +1,0 @@
-﻿  Server.cpp
-Server.obj : error LNK2019: unresolved external symbol "void __cdecl initializeMemory(int)" (?initializeMemory@@YAXH@Z) referenced in function main
-Server.obj : error LNK2019: unresolved external symbol "void __cdecl cleanup_segments(void)" (?cleanup_segments@@YAXXZ) referenced in function main
-C:\Users\drljo\Desktop\IKP-g33\IKP-g33\x64\Debug\Server.exe : fatal error LNK1120: 2 unresolved externals

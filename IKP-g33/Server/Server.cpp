@@ -98,7 +98,7 @@ int main()
 	}
 
 	printf("\nClient request accepted. Client address: %s : %d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
-		
+
 	bool allocate = false;
 	do
 	{
@@ -115,7 +115,7 @@ int main()
 				allocate = false;
 			}
 			strcpy_s(dataBuffer, "Request sent!\n");
-			
+
 			// Send message to clients using connected socket
 			iResult = send(acceptedSocket, dataBuffer, (int)strlen(dataBuffer), 0);
 
@@ -143,14 +143,14 @@ int main()
 					else {
 						printf("Memory allocation failed.\n");
 					}*/
-					
+
 				}
 				else {
 					printf("Deallocating segment on address %s...\n", dataBuffer);
 					strcpy_s(dataBuffer, "Successfully deallocated memory!\n");
-					
+
 				}
-				
+
 				iResult = send(acceptedSocket, dataBuffer, (int)strlen(dataBuffer), 0);
 				if (iResult == SOCKET_ERROR)
 				{
@@ -181,6 +181,6 @@ int main()
 	WSACleanup();
 
 	cleanup_segments();
-	
+
 	return 0;
 }

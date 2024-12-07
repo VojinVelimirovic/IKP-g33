@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{bf342b81-45e4-4e62-8b85-8e4eeafd94d2}</ProjectGuid>
+    <ProjectGuid>{cea8375d-5db4-4cba-ad58-9aef183eb03a}</ProjectGuid>
     <RootNamespace>Server</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -126,6 +126,11 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\HeapManager\HeapManager.vcxproj">
+      <Project>{35e92e0f-2d80-407b-a13a-86d5b28297a7}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Server.cpp" />
   </ItemGroup>

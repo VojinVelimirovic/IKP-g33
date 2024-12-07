@@ -3,6 +3,11 @@
 #include "HashMap.h"
 #include "Memory.h"
 
+// Global memory and hashmaps
+TMemorySegment* segments = NULL;
+int totalSegments = 0; //trenutan broj segmenata. ovaj broj se menja i nalazi se u ovom fajlu zato sto nam ne treba van njega
+HashMap* blockHashMap = NULL;
+HashMap* blockAddressHashMap = NULL;
 
 // Helper: Initialize memory segments
 void initializeMemory(int initialSize) {
@@ -166,10 +171,10 @@ void free_memory(void* address) {
     // Sada bukvalno izbacujemo blok iz obe hash mape
 
     // za blockHashMapu koristimo njegovu trenutnu adresu koju smo izracunali na pocetku metode
-    remove(blockHashMap, current_address); 
+    remove(blockHashMap, current_address);
 
     // za blockAddressHashMap koristimo njegovu originalnu adresu koja je zadata kao argument metode
-    remove(blockAddressHashMap, (intptr_t)address);                                         
+    remove(blockAddressHashMap, (intptr_t)address);
 }
 
 void cleanup_segments() {

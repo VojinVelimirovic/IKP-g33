@@ -9,15 +9,15 @@ void initializeQueue(Queue* q)
 }
 
 // Function to check if the queue is empty
-bool isEmpty(Queue* q) 
-{ 
+bool isEmpty(Queue* q)
+{
     return (q->front == q->rear - 1);
 }
 
 // Function to check if the queue is full
-bool isFull(Queue* q) 
-{ 
-    return (q->rear == MAX_SIZE); 
+bool isFull(Queue* q)
+{
+    return (q->rear == MAX_SIZE);
 }
 
 // Function to add an element to the queue (Enqueue operation)
