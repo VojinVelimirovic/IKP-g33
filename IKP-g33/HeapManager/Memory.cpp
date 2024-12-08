@@ -9,6 +9,8 @@ int totalSegments = 0; //trenutan broj segmenata. ovaj broj se menja i nalazi se
 HashMap* blockHashMap = NULL;
 HashMap* blockAddressHashMap = NULL;
 
+int free_memory_error = 0;
+
 // Helper: Initialize memory segments
 void initializeMemory(int initialSize) {
     segments = (TMemorySegment*)malloc(initialSize * sizeof(TMemorySegment));
@@ -68,8 +70,9 @@ void* allocate_memory(int size) {
     if (fit.startIndex == -1) {
         // Ako nije bilo mesta za blok, segmenti se prosiruju za broj segmenata koji fali
         addSegments(fit.missingSegments);
-        fit.startIndex = totalSegments - fit.missingSegments; //sada kada je prosiren broj segmenata blok moze da se ugura
+        fit.startIndex = totalSegments - requiredSegments; //sada kada je prosiren broj segmenata blok moze da se ugura
     }
+
 
     // Jedan po jedan od start indexa pa nadalje se zakljucavaju segmenti, menja im se isFree pa se otkljucavaju
     for (int i = fit.startIndex; i < fit.startIndex + requiredSegments; i++) {
@@ -86,21 +89,35 @@ void* allocate_memory(int size) {
 
     // Taj blok guramo u blockHashMap. kljuc je start adresa a vrednost je sam blok.
     put(blockHashMap, block->start_address, block);
-    // Taj blok takodje guramo u blockAddressHashMap. kljuc i vrednost su start adresa bloka. vrednost cemo kasnije menjati 
+    // Taj blok takodje guramo u blockAddressHashMap. kljuc i vrednost su start adresa bloka. 
+    // Vrednost se kasnije moze promijeniti tokom defragmentacije.
     put(blockAddressHashMap, block->start_address, (void*)(intptr_t)block->start_address);
 
+    // block->start_address je index
     return (void*)(intptr_t)block->start_address; //return ove funkcije je int konvertovan u (void*) start_addresse
     //ovu return adresu cemo ispisati klijentu na konzolu i on ce nju kasnije da koristi da bi oslobidio blok
 }
 
 void free_memory(void* address) {
+    free_memory_error = 0;
     // iz blockAddressHashMap izvlacimo trenutnu adresu i konvertujemo je u int
     int current_address = (int)(intptr_t)get(blockAddressHashMap, (intptr_t)address);
 
+    // ERROR: Adresa ne postoji u hashmapi adresa
+    if (current_address == -1) {
+        free_memory_error = 1;
+        printf("ERROR: Invalid address. There is no record for address: %d.\n", (int)address);
+        return;
+    }
+
     // na osnovu te adrese izblacimo blok iz blockHashMap
     TBlock* block = (TBlock*)get(blockHashMap, current_address);
-
-
+    // ERROR: Adresa ne postoji u hashmapi blokova
+    if (block == NULL) {
+        free_memory_error = 2;
+        printf("ERROR: Invalid address. No block found at address: %d.\n", current_address);
+        return;
+    }
 
     // oslobadjamo svaki segment koji je pripadao tom bloku
     for (int i = block->start_address; i < block->start_address + block->segments_taken; i++) {
@@ -154,7 +171,6 @@ void free_memory(void* address) {
                     }
                 }
 
-
                 // unutar segments niza svaki segment se pomera za 1 u nazad i njihova adresa se smanjuje za 1
                 for (int j = i; j < totalSegments - 1; j++) {
                     segments[j] = segments[j + 1];
@@ -170,6 +186,7 @@ void free_memory(void* address) {
     }
     // Sada bukvalno izbacujemo blok iz obe hash mape
 
+
     // za blockHashMapu koristimo njegovu trenutnu adresu koju smo izracunali na pocetku metode
     remove(blockHashMap, current_address);
 
@@ -177,6 +194,7 @@ void free_memory(void* address) {
     remove(blockAddressHashMap, (intptr_t)address);
 }
 
+// funckija koja deinicijalizuje sve strukture i promjenljive
 void cleanup_segments() {
     // Step 1: Clean up each segment
     if (segments != NULL) {
@@ -237,4 +255,45 @@ void cleanup_segments() {
 
     // Step 4: Reset the totalSegments counter
     totalSegments = 0;
+}
+
+// funckija koja graficki prikazuje trenutni izgled segments niza
+void drawMemorySegments() {
+    if (segments == NULL || totalSegments <= 0) {
+        printf("No memory segments to display.\n");
+        return;
+    }
+
+    int maxColumns = 10; // max broj kolona
+    printf("------------------------- SEGMENTS -------------------------\n\n");
+    for (int rowStart = 0; rowStart < totalSegments; rowStart += maxColumns) {
+        int rowEnd = (rowStart + maxColumns < totalSegments) ? rowStart + maxColumns : totalSegments;
+
+        // Print addresses above the squares
+        for (int i = rowStart; i < rowEnd; i++) {
+            printf("%3d   ", segments[i].address);
+        }
+        printf("\n");
+
+        // Print top line of squares
+        for (int i = rowStart; i < rowEnd; i++) {
+            printf("+---+ ");
+        }
+        printf("\n");
+
+        // Print middle line with 'x' or space based on isFree
+        for (int i = rowStart; i < rowEnd; i++) {
+            printf("| %c | ", segments[i].isFree ? ' ' : 'x');
+        }
+        printf("\n");
+
+        // Print bottom line of squares
+        for (int i = rowStart; i < rowEnd; i++) {
+            printf("+---+ ");
+        }
+        printf("\n");
+
+        // Add a blank line between rows for clarity
+        printf("\n");
+    }
 }

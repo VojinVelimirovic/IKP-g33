@@ -21,7 +21,6 @@
 // TCP server that use blocking sockets
 int main()
 {
-
 	initializeMemory(5);
 
 	SOCKET listenSocket = INVALID_SOCKET;
@@ -107,11 +106,11 @@ int main()
 		if (iResult > 0) {
 			dataBuffer[iResult] = '\0';
 			if (!strcmp(dataBuffer, "1")) {
-				printf("Allocation request recieved!\n");
+				printf("\nAllocation request recieved!\n");
 				allocate = true;
 			}
 			else {
-				printf("Deallocation request recieved!\n");
+				printf("\nDeallocation request recieved!\n");
 				allocate = false;
 			}
 			strcpy_s(dataBuffer, "Request sent!\n");
@@ -133,22 +132,34 @@ int main()
 			if (iResult > 0) {
 				dataBuffer[iResult] = '\0';
 				if (allocate) {
+					int bytesToAllocate = atoi(dataBuffer);
 					printf("Allocating %s bytes...\n", dataBuffer);
-					strcpy_s(dataBuffer, "Successfully allocated memory!\n");
+					int allocatedBlockAddress = (int)allocate_memory(bytesToAllocate);
 
-					/*void* allocatedBlock = allocate_memory(128);
-					if (allocatedBlock != NULL) {
-						printf("Memory block allocated at start address: %p\n", allocatedBlock);
+					if (allocatedBlockAddress != -1) {
+						printf("SUCCESS: Allocated %d bytes at address: %d\n\n", bytesToAllocate, allocatedBlockAddress);
+						snprintf(dataBuffer, BUFFER_SIZE, "SUCCESS: Allocated %d bytes at address: %d\n\n", bytesToAllocate, allocatedBlockAddress);
+						drawMemorySegments();
 					}
 					else {
-						printf("Memory allocation failed.\n");
-					}*/
+						printf("ERROR: Memory allocation failed.\n");
+						strcpy_s(dataBuffer, "ERROR: Memory allocation failed.\n\n");
+					}
 
 				}
 				else {
+					int blockAddress = atoi(dataBuffer);
 					printf("Deallocating segment on address %s...\n", dataBuffer);
-					strcpy_s(dataBuffer, "Successfully deallocated memory!\n");
+					free_memory((void*)blockAddress);
 
+					if (free_memory_error == 0) {
+						snprintf(dataBuffer, BUFFER_SIZE, "SUCCESS: Memory freed at address: %d!\n\n", blockAddress);
+						drawMemorySegments();
+					}
+					else {
+						snprintf(dataBuffer, BUFFER_SIZE, "ERROR: Failed to free memory! No block found at address: %d.\n\n",
+							blockAddress);
+					}
 				}
 
 				iResult = send(acceptedSocket, dataBuffer, (int)strlen(dataBuffer), 0);

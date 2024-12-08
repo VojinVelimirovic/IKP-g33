@@ -31,7 +31,7 @@ void* get(HashMap* map, int key) {
         }
         entry = entry->next;
     }
-    return NULL; // Key not found
+    return (void*)-1; // Key not found
 }
 
 void deleteHashMap(HashMap* map) {

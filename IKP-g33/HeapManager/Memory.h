@@ -1,6 +1,6 @@
 #pragma once
 #include "HashMap.h"
-
+extern int free_memory_error;
 
 //struktura za povratnu vrednost FirstFit-a
 typedef struct FirstFitResult {
@@ -14,3 +14,4 @@ FirstFitResult firstFit(int size);
 void* allocate_memory(int size);
 void free_memory(void* address);
 void cleanup_segments();
+void drawMemorySegments();

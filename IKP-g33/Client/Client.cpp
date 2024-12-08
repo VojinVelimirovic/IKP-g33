@@ -70,7 +70,7 @@ int main()
 	{
 		fseek(stdin, 0, SEEK_END);
 		int answer;
-		printf("1. Allocate memory\n2. Free memory\nx. Quit\n");
+		printf("Choose a command:\n1. Allocate memory\n2. Free memory\nx. Quit\n");
 		gets_s(buffer, BUFFER_SIZE);
 		if (strcmp(buffer, "x") == 0) {
 			break;
