@@ -3,34 +3,34 @@
 #ifndef QUEUE_H
 #define QUEUE_H
 
+#include <windows.h>
 #include <stdbool.h>
-#define MAX_SIZE 100
 
-// Defining the Queue structure
 typedef struct {
-    int items[MAX_SIZE];
-    int front;
-    int rear;
+    bool isAllocate;         // True for allocation, false for deallocation
+    int value;               // Size to allocate or address to deallocate
+    SOCKET clientSocket;
+} Request;
+
+typedef struct Node {
+    Request request;
+    struct Node* next;
+} Node;
+
+// Thread-safe queue structure
+typedef struct {
+    Node* front;
+    Node* rear;
+    CRITICAL_SECTION lock;
+    CONDITION_VARIABLE notEmpty;
 } Queue;
 
-// Function prototypes
-
-void initializeQueue(Queue* q);
-
-bool isEmpty(Queue* q);
-
-bool isFull(Queue* q);
-
-// Dodavanje element-a na kraj queue
-void enqueue(Queue* q, int value);
-
-// Brisanje elementa sa glave
-void dequeue(Queue* q);
-
-// Dobijanje elementa sa glave
-int peek(Queue* q);
-
-void printQueue(Queue* q);
+// Queue functions
+void initializeQueue(Queue* queue);
+void enqueue(Queue* queue, Request request);
+bool dequeue(Queue* queue, Request* request);
+void freeQueue(Queue* queue);
 
 #endif // QUEUE_H
+
 

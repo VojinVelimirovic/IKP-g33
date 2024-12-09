@@ -14,9 +14,62 @@
 
 #include "../HeapManager/MemorySegment.h"
 #include "../HeapManager/Memory.h"
+#include "../HeapManager/Queue.h"
 
 #define SERVER_PORT 27016
 #define BUFFER_SIZE 256
+
+// Atomic flag for server shutdown
+volatile LONG serverRunning = 1;
+
+
+// Function for worker threads to process requests
+DWORD WINAPI processRequest(LPVOID param) {
+	Queue* queue = (Queue*)param;
+	DWORD threadId = GetCurrentThreadId(); // Get the current thread ID
+
+	while (serverRunning || queue->front != NULL) {
+		Request request;
+		if (dequeue(queue, &request)) {
+			char responseBuffer[BUFFER_SIZE]; // Buffer to send responses back to the client
+
+			// Log which thread is processing the request
+			if (request.isAllocate) {
+				printf("Thread ID %lu: Processing allocation request for %d bytes.\n", threadId, request.value);
+				int allocatedBlockAddress = (int)allocate_memory(request.value);
+				if (allocatedBlockAddress != -1) {
+					printf("SUCCESS: Allocated %d bytes at address: %d\n\n", request.value, allocatedBlockAddress);
+					snprintf(responseBuffer, BUFFER_SIZE, "SUCCESS: Allocated %d bytes at address: %d\n\n", request.value, allocatedBlockAddress);
+				}
+				else {
+					printf("ERROR: Memory allocation failed for %d bytes.\n", request.value);
+					strcpy_s(responseBuffer, "ERROR: Memory allocation failed.");
+				}
+			}
+			else {
+				printf("Thread ID %lu: Processing deallocation request for address: %d.\n", threadId, request.value);
+				free_memory((void*)request.value);
+				if (free_memory_error == 0) {
+					printf("SUCCESS: Memory freed at address: %d\n", request.value);
+					snprintf(responseBuffer, BUFFER_SIZE, "SUCCESS: Memory freed at address: %d\n\n", request.value);
+				}
+				else {
+					printf("ERROR: Failed to free memory at address: %d.\n", request.value);
+					snprintf(responseBuffer, BUFFER_SIZE, "ERROR: Failed to free memory at address: %d.\n\n", request.value);
+				}
+			}
+
+			drawMemorySegments();
+
+			// Send the response back to the client
+			if (send(request.clientSocket, responseBuffer, (int)strlen(responseBuffer), 0) == SOCKET_ERROR) {
+				printf("send failed with error: %d\n", WSAGetLastError());
+			}
+		}
+	}
+	return 0;
+}
+
 
 // TCP server that use blocking sockets
 int main()
@@ -29,48 +82,34 @@ int main()
 	char dataBuffer[BUFFER_SIZE];
 
 	WSADATA wsaData;
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
-	{
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
 		printf("WSAStartup failed with error: %d\n", WSAGetLastError());
 		return 1;
 	}
 
-	// Initialize serverAddress structure used by bind
 	sockaddr_in serverAddress;
 	memset((char*)&serverAddress, 0, sizeof(serverAddress));
 	serverAddress.sin_family = AF_INET;
 	serverAddress.sin_addr.s_addr = INADDR_ANY;
 	serverAddress.sin_port = htons(SERVER_PORT);
 
-	// Create a SOCKET for connecting to server
-	listenSocket = socket(AF_INET,
-		SOCK_STREAM,
-		IPPROTO_TCP);
-
-	// Check if socket is successfully created
-	if (listenSocket == INVALID_SOCKET)
-	{
+	listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (listenSocket == INVALID_SOCKET) {
 		printf("socket failed with error: %ld\n", WSAGetLastError());
 		WSACleanup();
 		return 1;
 	}
 
-	// Setup the TCP listening socket - bind port number and local address to socket
 	iResult = bind(listenSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
-
-	// Check if socket is successfully binded to address and port from sockaddr_in structure
-	if (iResult == SOCKET_ERROR)
-	{
+	if (iResult == SOCKET_ERROR) {
 		printf("bind failed with error: %d\n", WSAGetLastError());
 		closesocket(listenSocket);
 		WSACleanup();
 		return 1;
 	}
 
-	// Set listenSocket in listening mode
 	iResult = listen(listenSocket, SOMAXCONN);
-	if (iResult == SOCKET_ERROR)
-	{
+	if (iResult == SOCKET_ERROR) {
 		printf("listen failed with error: %d\n", WSAGetLastError());
 		closesocket(listenSocket);
 		WSACleanup();
@@ -79,118 +118,87 @@ int main()
 
 	printf("Server socket is set to listening mode. Waiting for new connection requests.\n");
 
-	// Struct for information about connected client
 	sockaddr_in clientAddr;
-
 	int clientAddrSize = sizeof(struct sockaddr_in);
 
-	// Accept new connections from clients 
-	acceptedSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrSize);
+	// Initialize the queue
+	Queue requestQueue;
+	initializeQueue(&requestQueue);
 
-	// Check if accepted socket is valid 
-	if (acceptedSocket == INVALID_SOCKET)
-	{
-		printf("accept failed with error: %d\n", WSAGetLastError());
-		closesocket(listenSocket);
-		WSACleanup();
-		return 1;
+	// Create worker threads
+	const int threadPoolSize = 4; // Adjust as needed
+	HANDLE* threadPool = (HANDLE*)malloc(threadPoolSize * sizeof(HANDLE));
+	for (int i = 0; i < threadPoolSize; ++i) {
+		threadPool[i] = CreateThread(NULL, 0, processRequest, (LPVOID)&requestQueue, 0, NULL);
 	}
 
-	printf("\nClient request accepted. Client address: %s : %d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+	while (serverRunning) {
+		acceptedSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrSize);
+		if (acceptedSocket == INVALID_SOCKET) {
+			printf("accept failed with error: %d\n", WSAGetLastError());
+			break;
+		}
 
-	bool allocate = false;
-	do
-	{
-		// Receive data from first client 
-		iResult = recv(acceptedSocket, dataBuffer, BUFFER_SIZE, 0);
-		if (iResult > 0) {
-			dataBuffer[iResult] = '\0';
-			if (!strcmp(dataBuffer, "1")) {
-				printf("\nAllocation request recieved!\n");
-				allocate = true;
-			}
-			else {
-				printf("\nDeallocation request recieved!\n");
-				allocate = false;
-			}
-			strcpy_s(dataBuffer, "Request sent!\n");
+		printf("\nClient request accepted. Client address: %s : %d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
 
-			// Send message to clients using connected socket
-			iResult = send(acceptedSocket, dataBuffer, (int)strlen(dataBuffer), 0);
-
-			// Check result of send function
-			if (iResult == SOCKET_ERROR)
-			{
-				printf("send failed with error: %d\n", WSAGetLastError());
-				shutdown(acceptedSocket, SD_BOTH);
-				closesocket(acceptedSocket);
-				break;
-			}
-
-			// recv size/address
+		while (true) {
 			iResult = recv(acceptedSocket, dataBuffer, BUFFER_SIZE, 0);
 			if (iResult > 0) {
 				dataBuffer[iResult] = '\0';
-				if (allocate) {
-					int bytesToAllocate = atoi(dataBuffer);
-					printf("Allocating %s bytes...\n", dataBuffer);
-					int allocatedBlockAddress = (int)allocate_memory(bytesToAllocate);
 
-					if (allocatedBlockAddress != -1) {
-						printf("SUCCESS: Allocated %d bytes at address: %d\n\n", bytesToAllocate, allocatedBlockAddress);
-						snprintf(dataBuffer, BUFFER_SIZE, "SUCCESS: Allocated %d bytes at address: %d\n\n", bytesToAllocate, allocatedBlockAddress);
-						drawMemorySegments();
-					}
-					else {
-						printf("ERROR: Memory allocation failed.\n");
-						strcpy_s(dataBuffer, "ERROR: Memory allocation failed.\n\n");
-					}
-
+				// Primimo code zahtjeva
+				Request newRequest;
+				newRequest.clientSocket = acceptedSocket;
+				if (strcmp(dataBuffer, "1") == 0) {
+					printf("\nAllocation request received.\n");
+					newRequest.isAllocate = true;
 				}
 				else {
-					int blockAddress = atoi(dataBuffer);
-					printf("Deallocating segment on address %s...\n", dataBuffer);
-					free_memory((void*)blockAddress);
-
-					if (free_memory_error == 0) {
-						snprintf(dataBuffer, BUFFER_SIZE, "SUCCESS: Memory freed at address: %d!\n\n", blockAddress);
-						drawMemorySegments();
-					}
-					else {
-						snprintf(dataBuffer, BUFFER_SIZE, "ERROR: Failed to free memory! No block found at address: %d.\n\n",
-							blockAddress);
-					}
+					printf("\nDeallocation request received.\n");
+					newRequest.isAllocate = false;
 				}
 
-				iResult = send(acceptedSocket, dataBuffer, (int)strlen(dataBuffer), 0);
-				if (iResult == SOCKET_ERROR)
+				// Odgovorimo klijentu
+				strcpy_s(dataBuffer, "Request sent!\n");
+				if (send(acceptedSocket, dataBuffer, (int)strlen(dataBuffer), 0) == SOCKET_ERROR)
 				{
 					printf("send failed with error: %d\n", WSAGetLastError());
 					shutdown(acceptedSocket, SD_BOTH);
 					closesocket(acceptedSocket);
-					break;
+					break; // Exit the loop on send failure
+				}
+
+				// Primimo size ili address
+				iResult = recv(acceptedSocket, dataBuffer, BUFFER_SIZE, 0);
+				if (iResult > 0) {
+					dataBuffer[iResult] = '\0';
+					newRequest.value = atoi(dataBuffer);
+
+					// Add request to queue
+					enqueue(&requestQueue, newRequest);
+					WakeConditionVariable(&requestQueue.notEmpty);
+				}
+				else {
+					printf("Client disconnected or error occurred: %d\n", WSAGetLastError());
+					break; // Exit the loop if client disconnects
 				}
 			}
 		}
-	} while (true);
-
-
-	// Shutdown the connection since we're done
-	iResult = shutdown(acceptedSocket, SD_BOTH);
-
-	// Check if connection is succesfully shut down.
-	if (iResult == SOCKET_ERROR)
-	{
-		printf("shutdown failed with error: %d\n", WSAGetLastError());
+		shutdown(acceptedSocket, SD_BOTH);
 		closesocket(acceptedSocket);
-		WSACleanup();
-		return 1;
 	}
+
+	// Clean up
+	serverRunning = 0;
+	for (int i = 0; i < threadPoolSize; i++) {
+		WakeConditionVariable(&requestQueue.notEmpty); // Wake up any sleeping threads
+		WaitForSingleObject(threadPool[i], INFINITE); // Wait for threads to finish
+		CloseHandle(threadPool[i]); // Close thread handle
+	}
+	free(threadPool);
+	freeQueue(&requestQueue);
 	closesocket(listenSocket);
-	closesocket(acceptedSocket);
-
 	WSACleanup();
-
 	cleanup_segments();
 
 	return 0;

@@ -16,6 +16,18 @@
 #define SERVER_PORT 27016
 #define BUFFER_SIZE 256
 
+
+bool isValidInteger(const char* buffer) {
+	char* endptr;
+	long value = strtol(buffer, &endptr, 10); // Convert to long
+
+	if (endptr == buffer || *endptr != '\0') {
+		return false; // Invalid input
+	}
+	return true;
+}
+
+
 // TCP client that use blocking sockets
 int main()
 {
@@ -89,13 +101,16 @@ int main()
 		{
 			buffer[iResult] = '\0';
 			printf(buffer);
-			if (answer == 1) {
-				printf("Enter size of memory you want to allocate:\n");
-				gets_s(buffer, BUFFER_SIZE);
-			}
-			else if (answer == 2) {
-				printf("Enter the address that you want to free:\n");
-				gets_s(buffer, BUFFER_SIZE);
+			while (!isValidInteger(buffer)) {
+
+				if (answer == 1) {
+					printf("Enter size of memory you want to allocate:\n");
+					gets_s(buffer, BUFFER_SIZE);
+				}
+				else if (answer == 2) {
+					printf("Enter the address that you want to free:\n");
+					gets_s(buffer, BUFFER_SIZE);
+				}
 			}
 
 			iResult = send(connectSocket, buffer, (int)strlen(buffer), 0);
@@ -152,3 +167,4 @@ int main()
 
 	return 0;
 }
+

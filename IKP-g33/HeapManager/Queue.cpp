@@ -1,66 +1,82 @@
-#include <stdio.h>
 #include "queue.h"
+#include <stdlib.h>
 
-// Function to initialize the queue
-void initializeQueue(Queue* q)
-{
-    q->front = -1;
-    q->rear = 0;
+// Initialize the queue
+void initializeQueue(Queue* queue) {
+    queue->front = queue->rear = NULL;
+    InitializeCriticalSection(&queue->lock);       // zakljuca queue tokom pristupa
+    InitializeConditionVariable(&queue->notEmpty); // signalizira threadu kada queue nije vise prazan
 }
 
-// Function to check if the queue is empty
-bool isEmpty(Queue* q)
-{
-    return (q->front == q->rear - 1);
-}
-
-// Function to check if the queue is full
-bool isFull(Queue* q)
-{
-    return (q->rear == MAX_SIZE);
-}
-
-// Function to add an element to the queue (Enqueue operation)
-void enqueue(Queue* q, int value)
-{
-    if (isFull(q)) {
-        printf("Queue is full\n");
+// Dodaj request
+void enqueue(Queue* queue, Request request) {
+    Node* newNode = (Node*)malloc(sizeof(Node));
+    if (newNode == NULL) {
+        // Handle memory allocation failure
         return;
     }
-    q->items[q->rear] = value;
-    q->rear++;
+    newNode->request = request;
+    newNode->next = NULL;
+
+    EnterCriticalSection(&queue->lock);
+
+    if (queue->rear == NULL) {
+        queue->front = queue->rear = newNode;
+    }
+    else {
+        queue->rear->next = newNode;
+        queue->rear = newNode;
+    }
+
+    LeaveCriticalSection(&queue->lock);
+    WakeConditionVariable(&queue->notEmpty);
 }
 
-// Element se "brise" tako sto se indeks glave poveca za jedno mjesto
-void dequeue(Queue* q)
-{
-    if (isEmpty(q)) {
-        printf("Queue is empty\n");
-        return;
+// Pokupi request
+bool dequeue(Queue* queue, Request* request) {
+    EnterCriticalSection(&queue->lock);
+
+    // Wait until the queue is not empty
+    while (queue->front == NULL) {
+        SleepConditionVariableCS(&queue->notEmpty, &queue->lock, INFINITE);
     }
-    q->front++;
+
+    if (queue->front == NULL) {
+        LeaveCriticalSection(&queue->lock);
+        return false; // Queue is empty
+    }
+
+    Node* temp = queue->front;
+    *request = temp->request;
+    queue->front = queue->front->next;
+
+    if (queue->front == NULL) {
+        queue->rear = NULL;
+    }
+
+    free(temp);
+
+    LeaveCriticalSection(&queue->lock);
+    return true;
 }
 
-// Function to get the element at the front of the queue (Peek operation)
-int peek(Queue* q)
-{
-    if (isEmpty(q)) {
-        printf("Queue is empty\n");
-        return -1;
-    }
-    return q->items[q->front + 1];
-}
+// Free the queue and its resources
+void freeQueue(Queue* queue) {
+    EnterCriticalSection(&queue->lock);
+    Node* current = queue->front;
+    Node* nextNode;
 
-void printQueue(Queue* q)
-{
-    if (isEmpty(q)) {
-        printf("Queue is empty\n");
-        return;
+    // Traverse the queue and free each node
+    while (current != NULL) {
+        nextNode = current->next;
+        free(current);
+        current = nextNode;
     }
 
-    printf("Current Queue: ");
-    for (int i = q->front + 1; i < q->rear; i++) {
-        printf("%d ", q->items[i]);
-    }
-    printf("\n");
+    // Reset the queue
+    queue->front = NULL;
+    queue->rear = NULL;
+
+    LeaveCriticalSection(&queue->lock);
+    DeleteCriticalSection(&queue->lock); // Clean up the critical section
 }
