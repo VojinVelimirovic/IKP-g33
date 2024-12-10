@@ -18,6 +18,10 @@
 
 
 bool isValidInteger(const char* buffer) {
+	if (buffer == NULL) {
+		return false; // Input is NULL
+	}
+
 	char* endptr;
 	long value = strtol(buffer, &endptr, 10); // Convert to long
 
@@ -26,6 +30,16 @@ bool isValidInteger(const char* buffer) {
 	}
 	return true;
 }
+
+bool isValidInteger2(const char* str) {
+	for (int i = 0; str[i] != '\0'; i++) {
+		if (!isdigit(str[i])) {
+			return false;
+		}
+	}
+	return true;
+}
+
 
 
 // TCP client that use blocking sockets
@@ -81,53 +95,53 @@ int main()
 	while (strcmp(buffer, "x") != 0)
 	{
 		fseek(stdin, 0, SEEK_END);
-		int answer;
+		int command_code;
 		printf("Choose a command:\n1. Allocate memory\n2. Free memory\nx. Quit\n");
 		gets_s(buffer, BUFFER_SIZE);
-		if (strcmp(buffer, "x") == 0) {
-			break;
-		}
+
+
 		if (strcmp(buffer, "1") && strcmp(buffer, "2")) {
 			printf("Invalid option. Please try again.\n");
 			continue;
 		}
-		answer = atoi(buffer);
-		iResult = send(connectSocket, buffer, (int)strlen(buffer), 0);
+		command_code = atoi(buffer);
+
+		while (true) {
+			if (command_code == 1) {
+				printf("Enter size of memory you want to allocate:\n");
+				gets_s(buffer, BUFFER_SIZE);
+				if (!isValidInteger2(buffer)) {
+					continue;
+				}
+				break;
+			}
+			else if (command_code == 2) {
+				printf("Enter the address that you want to free:\n");
+				gets_s(buffer, BUFFER_SIZE);
+				if (!isValidInteger2(buffer)) {
+					continue;
+				}
+				break;
+			}
+		}
+
+		char command_code_str[2]; // 4 bytes: enough for single-digit numbers, a comma, and null terminator
+		sprintf_s(command_code_str, sizeof(command_code_str), "%d", command_code);
+
+		char formatted_message[BUFFER_SIZE];
+		sprintf_s(formatted_message, sizeof(formatted_message), "%s,%s", command_code_str, buffer);
+
+
+		iResult = send(connectSocket, formatted_message, (int)strlen(formatted_message), 0);
 		fseek(stdin, 0, SEEK_END);
 		fflush(stdin);
 
-		iResult = recv(connectSocket, buffer, BUFFER_SIZE, 0);
 		if (iResult > 0)
 		{
-			buffer[iResult] = '\0';
-			printf(buffer);
-			while (!isValidInteger(buffer)) {
-
-				if (answer == 1) {
-					printf("Enter size of memory you want to allocate:\n");
-					gets_s(buffer, BUFFER_SIZE);
-				}
-				else if (answer == 2) {
-					printf("Enter the address that you want to free:\n");
-					gets_s(buffer, BUFFER_SIZE);
-				}
-			}
-
-			iResult = send(connectSocket, buffer, (int)strlen(buffer), 0);
-
-			if (iResult == SOCKET_ERROR)
-			{
-				printf("send failed with error: %d\n", WSAGetLastError());
-				closesocket(connectSocket);
-				WSACleanup();
-				return 1;
-			}
 		}
 		else {
 			continue;
 		}
-		fseek(stdin, 0, SEEK_END);
-		fflush(stdin);
 
 		iResult = recv(connectSocket, buffer, BUFFER_SIZE, 0);
 		if (iResult > 0)

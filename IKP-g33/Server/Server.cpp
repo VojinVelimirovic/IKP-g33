@@ -1,5 +1,6 @@
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #define WIN32_LEAN_AND_MEAN
+#define _CRT_SECURE_NO_WARNINGS
 
 #include <windows.h>
 #include <winsock2.h>
@@ -28,7 +29,7 @@ DWORD WINAPI processRequest(LPVOID param) {
 	Queue* queue = (Queue*)param;
 	DWORD threadId = GetCurrentThreadId(); // Get the current thread ID
 
-	while (serverRunning || queue->front != NULL) {
+	while (serverRunning /*|| queue->front != NULL*/) {
 		Request request;
 		if (dequeue(queue, &request)) {
 			char responseBuffer[BUFFER_SIZE]; // Buffer to send responses back to the client
@@ -145,43 +146,50 @@ int main()
 			iResult = recv(acceptedSocket, dataBuffer, BUFFER_SIZE, 0);
 			if (iResult > 0) {
 				dataBuffer[iResult] = '\0';
+				int command_code, value;
+				char* token;
 
-				// Primimo code zahtjeva
+				// Extract the first token
+				token = strtok(dataBuffer, ",");
+				if (token != NULL) {
+					command_code = atoi(token);  // Convert to integer
+				}
+				else {
+					fprintf(stderr, "Error: Missing first parameter.\n");
+					return 1;
+				}
+
+				// Extract the second token
+				token = strtok(NULL, ",");
+				if (token != NULL) {
+					value = atoi(token);  // Convert to integer
+				}
+				else {
+					fprintf(stderr, "Error: Missing second parameter.\n");
+					return 1;
+				}
+
 				Request newRequest;
 				newRequest.clientSocket = acceptedSocket;
-				if (strcmp(dataBuffer, "1") == 0) {
+
+				if (command_code == 1) {
 					printf("\nAllocation request received.\n");
 					newRequest.isAllocate = true;
 				}
-				else {
+				else if (command_code == 2) {
 					printf("\nDeallocation request received.\n");
 					newRequest.isAllocate = false;
 				}
-
-				// Odgovorimo klijentu
-				strcpy_s(dataBuffer, "Request sent!\n");
-				if (send(acceptedSocket, dataBuffer, (int)strlen(dataBuffer), 0) == SOCKET_ERROR)
-				{
-					printf("send failed with error: %d\n", WSAGetLastError());
-					shutdown(acceptedSocket, SD_BOTH);
-					closesocket(acceptedSocket);
-					break; // Exit the loop on send failure
-				}
-
-				// Primimo size ili address
-				iResult = recv(acceptedSocket, dataBuffer, BUFFER_SIZE, 0);
-				if (iResult > 0) {
-					dataBuffer[iResult] = '\0';
-					newRequest.value = atoi(dataBuffer);
-
-					// Add request to queue
-					enqueue(&requestQueue, newRequest);
-					WakeConditionVariable(&requestQueue.notEmpty);
-				}
 				else {
-					printf("Client disconnected or error occurred: %d\n", WSAGetLastError());
-					break; // Exit the loop if client disconnects
+					printf("Error");
 				}
+
+				newRequest.value = value;
+
+				// Add request to queue
+				enqueue(&requestQueue, newRequest);
+				WakeConditionVariable(&requestQueue.notEmpty);
+
 			}
 		}
 		shutdown(acceptedSocket, SD_BOTH);
