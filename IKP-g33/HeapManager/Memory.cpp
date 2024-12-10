@@ -113,7 +113,7 @@ void free_memory(void* address) {
     // na osnovu te adrese izblacimo blok iz blockHashMap
     TBlock* block = (TBlock*)get(blockHashMap, current_address);
     // ERROR: Adresa ne postoji u hashmapi blokova
-    if (block == NULL) {
+    if (block == (TBlock*)-1) {
         free_memory_error = 2;
         printf("ERROR: Invalid address. No block found at address: %d.\n", current_address);
         return;

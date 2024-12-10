@@ -19,6 +19,7 @@
 
 #define SERVER_PORT 27016
 #define BUFFER_SIZE 256
+#define MAX_CLIENTS 5
 
 // Atomic flag for server shutdown
 volatile LONG serverRunning = 1;
@@ -72,142 +73,154 @@ DWORD WINAPI processRequest(LPVOID param) {
 }
 
 
-// TCP server that use blocking sockets
 int main()
 {
-	initializeMemory(5);
+    initializeMemory(5);
 
-	SOCKET listenSocket = INVALID_SOCKET;
-	SOCKET acceptedSocket = INVALID_SOCKET;
-	int iResult;
-	char dataBuffer[BUFFER_SIZE];
+    SOCKET listenSocket = INVALID_SOCKET;
+    SOCKET clientSockets[MAX_CLIENTS] = { 0 };  // Track connected clients
+    int iResult;
+    char dataBuffer[BUFFER_SIZE];
 
-	WSADATA wsaData;
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
-		printf("WSAStartup failed with error: %d\n", WSAGetLastError());
-		return 1;
-	}
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        printf("WSAStartup failed with error: %d\n", WSAGetLastError());
+        return 1;
+    }
 
-	sockaddr_in serverAddress;
-	memset((char*)&serverAddress, 0, sizeof(serverAddress));
-	serverAddress.sin_family = AF_INET;
-	serverAddress.sin_addr.s_addr = INADDR_ANY;
-	serverAddress.sin_port = htons(SERVER_PORT);
+    sockaddr_in serverAddress;
+    memset((char*)&serverAddress, 0, sizeof(serverAddress));
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_addr.s_addr = INADDR_ANY;
+    serverAddress.sin_port = htons(SERVER_PORT);
 
-	listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (listenSocket == INVALID_SOCKET) {
-		printf("socket failed with error: %ld\n", WSAGetLastError());
-		WSACleanup();
-		return 1;
-	}
+    listenSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (listenSocket == INVALID_SOCKET) {
+        printf("socket failed with error: %ld\n", WSAGetLastError());
+        WSACleanup();
+        return 1;
+    }
 
-	iResult = bind(listenSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
-	if (iResult == SOCKET_ERROR) {
-		printf("bind failed with error: %d\n", WSAGetLastError());
-		closesocket(listenSocket);
-		WSACleanup();
-		return 1;
-	}
+    // Set the listening socket to non-blocking mode
+    u_long nonBlockingMode = 1;
+    ioctlsocket(listenSocket, FIONBIO, &nonBlockingMode);
 
-	iResult = listen(listenSocket, SOMAXCONN);
-	if (iResult == SOCKET_ERROR) {
-		printf("listen failed with error: %d\n", WSAGetLastError());
-		closesocket(listenSocket);
-		WSACleanup();
-		return 1;
-	}
+    iResult = bind(listenSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
+    if (iResult == SOCKET_ERROR) {
+        printf("bind failed with error: %d\n", WSAGetLastError());
+        closesocket(listenSocket);
+        WSACleanup();
+        return 1;
+    }
 
-	printf("Server socket is set to listening mode. Waiting for new connection requests.\n");
+    iResult = listen(listenSocket, SOMAXCONN);
+    if (iResult == SOCKET_ERROR) {
+        printf("listen failed with error: %d\n", WSAGetLastError());
+        closesocket(listenSocket);
+        WSACleanup();
+        return 1;
+    }
 
-	sockaddr_in clientAddr;
-	int clientAddrSize = sizeof(struct sockaddr_in);
+    printf("Server socket is set to non-blocking listening mode. Waiting for new connection requests.\n");
 
-	// Initialize the queue
-	Queue requestQueue;
-	initializeQueue(&requestQueue);
+    sockaddr_in clientAddr;
+    int clientAddrSize = sizeof(struct sockaddr_in);
 
-	// Create worker threads
-	const int threadPoolSize = 4; // Adjust as needed
-	HANDLE* threadPool = (HANDLE*)malloc(threadPoolSize * sizeof(HANDLE));
-	for (int i = 0; i < threadPoolSize; ++i) {
-		threadPool[i] = CreateThread(NULL, 0, processRequest, (LPVOID)&requestQueue, 0, NULL);
-	}
+    // Initialize the queue
+    Queue requestQueue;
+    initializeQueue(&requestQueue);
 
-	while (serverRunning) {
-		acceptedSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrSize);
-		if (acceptedSocket == INVALID_SOCKET) {
-			printf("accept failed with error: %d\n", WSAGetLastError());
-			break;
-		}
+    // Create worker threads
+    const int threadPoolSize = 4;
+    HANDLE* threadPool = (HANDLE*)malloc(threadPoolSize * sizeof(HANDLE));
+    for (int i = 0; i < threadPoolSize; ++i) {
+        threadPool[i] = CreateThread(NULL, 0, processRequest, (LPVOID)&requestQueue, 0, NULL);
+    }
 
-		printf("\nClient request accepted. Client address: %s : %d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+    fd_set readfds;
+    while (serverRunning) {
+        FD_ZERO(&readfds);
+        FD_SET(listenSocket, &readfds);
 
-		while (true) {
-			iResult = recv(acceptedSocket, dataBuffer, BUFFER_SIZE, 0);
-			if (iResult > 0) {
-				dataBuffer[iResult] = '\0';
-				int command_code, value;
-				char* token;
+        SOCKET maxSocket = listenSocket;
+        for (int i = 0; i < MAX_CLIENTS; ++i) {
+            if (clientSockets[i] > 0) {
+                FD_SET(clientSockets[i], &readfds);
+                if (clientSockets[i] > maxSocket) {
+                    maxSocket = clientSockets[i];
+                }
+            }
+        }
 
-				// Extract the first token
-				token = strtok(dataBuffer, ",");
-				if (token != NULL) {
-					command_code = atoi(token);  // Convert to integer
-				}
-				else {
-					fprintf(stderr, "Error: Missing first parameter.\n");
-					return 1;
-				}
+        timeval timeout = { 1, 0 };  // 1-second timeout for select
+        int activity = select((int)maxSocket + 1, &readfds, NULL, NULL, &timeout);
+        if (activity < 0 && WSAGetLastError() != WSAEINTR) {
+            printf("select error: %d\n", WSAGetLastError());
+            break;
+        }
 
-				// Extract the second token
-				token = strtok(NULL, ",");
-				if (token != NULL) {
-					value = atoi(token);  // Convert to integer
-				}
-				else {
-					fprintf(stderr, "Error: Missing second parameter.\n");
-					return 1;
-				}
+        // Handle new connections
+        if (FD_ISSET(listenSocket, &readfds)) {
+            SOCKET newSocket = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrSize);
+            if (newSocket != INVALID_SOCKET) {
+                printf("\nNew client connected: %s : %d\n", inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+                ioctlsocket(newSocket, FIONBIO, &nonBlockingMode);  // Set the new socket to non-blocking mode
 
-				Request newRequest;
-				newRequest.clientSocket = acceptedSocket;
+                for (int i = 0; i < MAX_CLIENTS; ++i) {
+                    if (clientSockets[i] == 0) {
+                        clientSockets[i] = newSocket;
+                        break;
+                    }
+                }
+            }
+        }
 
-				if (command_code == 1) {
-					printf("\nAllocation request received.\n");
-					newRequest.isAllocate = true;
-				}
-				else if (command_code == 2) {
-					printf("\nDeallocation request received.\n");
-					newRequest.isAllocate = false;
-				}
-				else {
-					printf("Error");
-				}
+        // Handle IO on connected clients
+        for (int i = 0; i < MAX_CLIENTS; ++i) {
+            SOCKET clientSocket = clientSockets[i];
+            if (clientSocket > 0 && FD_ISSET(clientSocket, &readfds)) {
+                iResult = recv(clientSocket, dataBuffer, BUFFER_SIZE, 0);
+                if (iResult > 0) {
+                    dataBuffer[iResult] = '\0';
 
-				newRequest.value = value;
+                    Request newRequest;
+                    newRequest.clientSocket = clientSocket;
 
-				// Add request to queue
-				enqueue(&requestQueue, newRequest);
-				WakeConditionVariable(&requestQueue.notEmpty);
+                    char* token = strtok(dataBuffer, ",");
+                    newRequest.isAllocate = (atoi(token) == 1);
 
-			}
-		}
-		shutdown(acceptedSocket, SD_BOTH);
-		closesocket(acceptedSocket);
-	}
+                    token = strtok(NULL, ",");
+                    newRequest.value = atoi(token);
 
-	// Clean up
-	serverRunning = 0;
-	for (int i = 0; i < threadPoolSize; i++) {
-		WakeConditionVariable(&requestQueue.notEmpty); // Wake up any sleeping threads
-		WaitForSingleObject(threadPool[i], INFINITE); // Wait for threads to finish
-		CloseHandle(threadPool[i]); // Close thread handle
-	}
-	free(threadPool);
-	freeQueue(&requestQueue);
-	closesocket(listenSocket);
-	WSACleanup();
-	cleanup_segments();
+                    enqueue(&requestQueue, newRequest);
+                    WakeConditionVariable(&requestQueue.notEmpty);
+                }
+                else if (iResult == 0 || WSAGetLastError() != WSAEWOULDBLOCK) {
+                    printf("Client disconnected or error: %d\n", WSAGetLastError());
+                    closesocket(clientSocket);
+                    clientSockets[i] = 0;
+                }
+            }
+        }
+    }
 
-	return 0;
+    // Cleanup
+    serverRunning = 0;
+    for (int i = 0; i < threadPoolSize; i++) {
+        WakeConditionVariable(&requestQueue.notEmpty);
+        WaitForSingleObject(threadPool[i], INFINITE);
+        CloseHandle(threadPool[i]);
+    }
+    free(threadPool);
+    freeQueue(&requestQueue);
+    closesocket(listenSocket);
+    for (int i = 0; i < MAX_CLIENTS; ++i) {
+        if (clientSockets[i] > 0) {
+            closesocket(clientSockets[i]);
+        }
+    }
+    WSACleanup();
+    cleanup_segments();
+
+    return 0;
 }
