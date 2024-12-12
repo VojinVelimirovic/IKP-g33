@@ -16,22 +16,65 @@
 #define SERVER_PORT 27016
 #define BUFFER_SIZE 256
 
+#define NUM_THREADS_STRESS_TEST 20
+typedef struct ThreadArgs {
+	SOCKET connectSocket;
+} ThreadArgs;
 
-bool isValidInteger(const char* buffer) {
-	if (buffer == NULL) {
-		return false; // Input is NULL
-	}
-
-	char* endptr;
-	long value = strtol(buffer, &endptr, 10); // Convert to long
-
-	if (endptr == buffer || *endptr != '\0') {
-		return false; // Invalid input
-	}
-	return true;
+void stress_test(SOCKET connectSocket) {
+	char buffer[BUFFER_SIZE];
+	char msg[] = "1,10\n";
+	send(connectSocket, msg, (int)strlen(msg), 0);
+	int iResult = recv(connectSocket, buffer, BUFFER_SIZE, 0);
+	buffer[iResult] = '\0';
+	printf(buffer);
 }
 
-bool isValidInteger2(const char* str) {
+// Thread function
+unsigned __stdcall stress_test_thread(void* args) {
+	ThreadArgs* threadArgs = (ThreadArgs*)args;
+	SOCKET connectSocket = threadArgs->connectSocket;
+
+	// Execute the stress_test function
+	stress_test(connectSocket);
+
+	return 0;
+}
+
+void create_stress_test_threads(SOCKET connectSocket, int numThreads) {
+	HANDLE threads[NUM_THREADS_STRESS_TEST];
+	ThreadArgs threadArgs = { connectSocket };
+
+	// Create multiple threads
+	for (int i = 0; i < numThreads; i++) {
+		threads[i] = CreateThread(
+			NULL,                      // Security attributes
+			0,                         // Stack size (default)
+			(LPTHREAD_START_ROUTINE)stress_test_thread,        // Thread function
+			&threadArgs,               // Arguments to thread function
+			0,                         // Creation flags
+			NULL                       // Thread identifier
+		);
+
+		if (threads[i] == NULL) {
+			printf("Failed to create thread %d\n", i);
+		}
+		else {
+			printf("Thread %d created successfully.\n", i);
+		}
+	}
+
+	// Wait for all threads to finish
+	WaitForMultipleObjects(numThreads, threads, TRUE, INFINITE);
+
+	// Close thread handles
+	for (int i = 0; i < numThreads; i++) {
+		CloseHandle(threads[i]);
+	}
+}
+
+
+bool isValidInteger(const char* str) {
 	for (int i = 0; str[i] != '\0'; i++) {
 		if (!isdigit(str[i])) {
 			return false;
@@ -39,9 +82,6 @@ bool isValidInteger2(const char* str) {
 	}
 	return true;
 }
-
-
-
 // TCP client that use blocking sockets
 int main()
 {
@@ -91,6 +131,7 @@ int main()
 		return 1;
 	}
 
+	create_stress_test_threads(connectSocket, NUM_THREADS_STRESS_TEST);
 
 	while (strcmp(buffer, "x") != 0)
 	{
@@ -110,7 +151,7 @@ int main()
 			if (command_code == 1) {
 				printf("Enter size of memory you want to allocate:\n");
 				gets_s(buffer, BUFFER_SIZE);
-				if (!isValidInteger2(buffer)) {
+				if (!isValidInteger(buffer)) {
 					continue;
 				}
 				break;
@@ -118,7 +159,7 @@ int main()
 			else if (command_code == 2) {
 				printf("Enter the address that you want to free:\n");
 				gets_s(buffer, BUFFER_SIZE);
-				if (!isValidInteger2(buffer)) {
+				if (!isValidInteger(buffer)) {
 					continue;
 				}
 				break;
@@ -136,13 +177,6 @@ int main()
 		fseek(stdin, 0, SEEK_END);
 		fflush(stdin);
 
-		if (iResult > 0)
-		{
-		}
-		else {
-			continue;
-		}
-
 		iResult = recv(connectSocket, buffer, BUFFER_SIZE, 0);
 		if (iResult > 0)
 		{
@@ -158,8 +192,6 @@ int main()
 		}
 	}
 
-
-
 	// Shutdown the connection since we're done
 	iResult = shutdown(connectSocket, SD_BOTH);
 
@@ -172,13 +204,8 @@ int main()
 		return 1;
 	}
 
-
-	// Close connected socket
 	closesocket(connectSocket);
-
-	// Deinitialize WSA library
 	WSACleanup();
 
 	return 0;
 }
-

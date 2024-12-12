@@ -40,7 +40,7 @@ DWORD WINAPI processRequest(LPVOID param) {
 				printf("Thread ID %lu: Processing allocation request for %d bytes.\n", threadId, request.value);
 				int allocatedBlockAddress = (int)allocate_memory(request.value);
 				if (allocatedBlockAddress != -1) {
-					printf("SUCCESS: Allocated %d bytes at address: %d\n\n", request.value, allocatedBlockAddress);
+					printf("Thread ID %lu: SUCCESS: Allocated %d bytes at address: %d\n\n", threadId, request.value, allocatedBlockAddress);
 					snprintf(responseBuffer, BUFFER_SIZE, "SUCCESS: Allocated %d bytes at address: %d\n\n", request.value, allocatedBlockAddress);
 				}
 				else {
@@ -52,7 +52,7 @@ DWORD WINAPI processRequest(LPVOID param) {
 				printf("Thread ID %lu: Processing deallocation request for address: %d.\n", threadId, request.value);
 				free_memory((void*)request.value);
 				if (free_memory_error == 0) {
-					printf("SUCCESS: Memory freed at address: %d\n", request.value);
+					printf("Thread ID %lu: SUCCESS: Memory freed at address: %d\n", threadId, request.value);
 					snprintf(responseBuffer, BUFFER_SIZE, "SUCCESS: Memory freed at address: %d\n\n", request.value);
 				}
 				else {
@@ -61,7 +61,7 @@ DWORD WINAPI processRequest(LPVOID param) {
 				}
 			}
 
-			drawMemorySegments();
+			//drawMemorySegments();
 
 			// Send the response back to the client
 			if (send(request.clientSocket, responseBuffer, (int)strlen(responseBuffer), 0) == SOCKET_ERROR) {
@@ -137,7 +137,9 @@ int main()
         threadPool[i] = CreateThread(NULL, 0, processRequest, (LPVOID)&requestQueue, 0, NULL);
     }
 
+
     fd_set readfds;
+    char inputBuffer[BUFFER_SIZE];
     while (serverRunning) {
         FD_ZERO(&readfds);
         FD_SET(listenSocket, &readfds);
@@ -200,6 +202,14 @@ int main()
                     closesocket(clientSocket);
                     clientSockets[i] = 0;
                 }
+            }
+        }
+
+        // Check for user input
+        if (_kbhit()) {  // Check if a key was pressed
+            fgets(inputBuffer, sizeof(inputBuffer), stdin); // Read the input
+            if (strcmp(inputBuffer, "draw\n") == 0) {
+                drawMemorySegments(); // Call your function here
             }
         }
     }
