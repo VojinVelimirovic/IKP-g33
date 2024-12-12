@@ -159,12 +159,15 @@ void free_memory(void* address) {
                             // zato sto je njegova trenutna startna adresa vrednost blockAddressHashMape
                             // a kljuc odatle je njegova originalna adresa
                             int original_address = findKeyByValue(blockAddressHashMap, (intptr_t)affectedBlock->start_address);
-
+                            printf("\n\nOriginal address: %d\n", original_address);
                             if (original_address != -1) {
                                 // Smanjujemo mu trenutnu startnu adresu u blockHashMap
+                                remove(blockHashMap, affectedBlock->start_address);
                                 affectedBlock->start_address--;
-
+                                printf("New address: %d\n\n", affectedBlock->start_address);
+                                put(blockHashMap, affectedBlock->start_address, affectedBlock);
                                 // Azuriramo mu trenutnu startnu adresu u blockAddressHashMap na kljucu njegove originalne startne adrese
+                                remove(blockAddressHashMap, original_address);
                                 put(blockAddressHashMap, original_address, (void*)(intptr_t)affectedBlock->start_address);
                             }
                         }
