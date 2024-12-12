@@ -2,12 +2,14 @@
 #include <stdbool.h>
 #include "HashMap.h"
 #include "Memory.h"
+#include "LinkedList.h"
 
 // Global memory and hashmaps
 TMemorySegment* segments = NULL;
 int totalSegments = 0; //trenutan broj segmenata. ovaj broj se menja i nalazi se u ovom fajlu zato sto nam ne treba van njega
 HashMap* blockHashMap = NULL;
 HashMap* blockAddressHashMap = NULL;
+LinkedList* list_of_free_segments = NULL;
 
 int free_memory_error = 0;
 
@@ -20,6 +22,10 @@ void initializeMemory(int initialSize) {
         segments[i].mutex = CreateMutex(NULL, FALSE, NULL);
     }
     totalSegments = initialSize;
+
+    list_of_free_segments = (LinkedList*)malloc(sizeof(LinkedList));
+    initList(list_of_free_segments);
+    append(list_of_free_segments, 0, initialSize);
     blockHashMap = createHashMap(128); //u hashmapi ima ovoliko, ne mora da bude dinamicna mozemo menjati velicinu
     blockAddressHashMap = createHashMap(128);
 }
@@ -33,6 +39,7 @@ void addSegments(int additionalSegments) {
         segments[i].isFree = true; //novo dodate segmente postavljam da su slobodni
         segments[i].mutex = CreateMutex(NULL, FALSE, NULL);
     }
+    append(list_of_free_segments, totalSegments, additionalSegments);
     totalSegments += additionalSegments; //menjamo ukupan broj segmenata
 }
 
@@ -43,23 +50,44 @@ FirstFitResult firstFit(int size) {
     int requiredSegments = (size + SEGMENT_SIZE - 1) / SEGMENT_SIZE;
     int count = 0;
 
-    for (int i = 0; i < totalSegments; i++) {
-        if (segments[i].isFree) {
-            count++;
-            if (count == requiredSegments) {
-                result.startIndex = i - requiredSegments + 1; //Ako je nadjen prostor za blok postavlja se startIndex
-                return result;                                //i returnuje se rezultat
-            }
+
+    ListNode* prev = NULL;
+    ListNode* current = list_of_free_segments->head;
+    while (current != NULL) {
+        if (current->free_segments >= requiredSegments) {
+            result.startIndex = current->address - requiredSegments + 1;
+            return result;
         }
-        else {
-            count = 0;
-        }
+        prev = current;
+        current = current->next;
     }
+
+
+    //for (int i = 0; i < totalSegments; i++) {
+    //    if (segments[i].isFree) {
+    //        count++;
+    //        if (count == requiredSegments) {
+    //            result.startIndex = i - requiredSegments + 1; //Ako je nadjen prostor za blok postavlja se startIndex
+    //            return result;                                //i returnuje se rezultat
+    //        }
+    //    }
+    //    else {
+    //        count = 0;
+    //    }
+    //}
 
     // Ako nije prosao return znaci da je count nakon for loopa jednak broju slobodnih segmenata na kraju
     // i takodje znaci da je startIndex ostao -1.
-    //allocate_memory ce proveravati da li je startIndex -1. Ako jeste znaci da treba da prosiri broj segmenata
-    result.missingSegments = requiredSegments - count;
+    // allocate_memory ce proveravati da li je startIndex -1. Ako jeste znaci da treba da prosiri broj segmenata
+    //result.missingSegments = requiredSegments - count;
+
+    if (prev->address + prev->free_segments == totalSegments) {
+        result.missingSegments = requiredSegments - prev->free_segments;
+    }
+    else {
+        result.missingSegments = requiredSegments;
+    }
+    
     return result;
 }
 
@@ -73,7 +101,6 @@ void* allocate_memory(int size) {
         fit.startIndex = totalSegments - requiredSegments; //sada kada je prosiren broj segmenata blok moze da se ugura
     }
 
-
     // Jedan po jedan od start indexa pa nadalje se zakljucavaju segmenti, menja im se isFree pa se otkljucavaju
     for (int i = fit.startIndex; i < fit.startIndex + requiredSegments; i++) {
         WaitForSingleObject(segments[i].mutex, INFINITE);
@@ -86,6 +113,8 @@ void* allocate_memory(int size) {
     block->start_address = fit.startIndex;
     block->size = size;
     block->segments_taken = requiredSegments;
+
+    updateList(list_of_free_segments, fit.startIndex, requiredSegments);
 
     // Taj blok guramo u blockHashMap. kljuc je start adresa a vrednost je sam blok.
     put(blockHashMap, block->start_address, block);
@@ -133,11 +162,18 @@ void free_memory(void* address) {
 
     // brojimo slobodne segmente
     int freeSegmentsCount = 0;
-    for (int i = 0; i < totalSegments; i++) {
-        if (segments[i].isFree) {
-            freeSegmentsCount++;
-        }
+    //for (int i = 0; i < totalSegments; i++) {
+    //    if (segments[i].isFree) {
+    //        freeSegmentsCount++;
+    //    }
+    //}
+
+    ListNode* current = list_of_free_segments->head;
+    while (current != NULL) {
+        freeSegmentsCount += current->free_segments;
+        current = current->next;
     }
+
     // ako ih je preko 5 brisemo one koji visak slobodnih segmenata sa pocetka
     if (freeSegmentsCount > 5) {
         //broj segmenata koje treba da izbrisemo
@@ -159,15 +195,12 @@ void free_memory(void* address) {
                             // zato sto je njegova trenutna startna adresa vrednost blockAddressHashMape
                             // a kljuc odatle je njegova originalna adresa
                             int original_address = findKeyByValue(blockAddressHashMap, (intptr_t)affectedBlock->start_address);
-                            printf("\n\nOriginal address: %d\n", original_address);
+
                             if (original_address != -1) {
                                 // Smanjujemo mu trenutnu startnu adresu u blockHashMap
-                                remove(blockHashMap, affectedBlock->start_address);
                                 affectedBlock->start_address--;
-                                printf("New address: %d\n\n", affectedBlock->start_address);
-                                put(blockHashMap, affectedBlock->start_address, affectedBlock);
+
                                 // Azuriramo mu trenutnu startnu adresu u blockAddressHashMap na kljucu njegove originalne startne adrese
-                                remove(blockAddressHashMap, original_address);
                                 put(blockAddressHashMap, original_address, (void*)(intptr_t)affectedBlock->start_address);
                             }
                         }
@@ -189,12 +222,13 @@ void free_memory(void* address) {
     }
     // Sada bukvalno izbacujemo blok iz obe hash mape
 
-
     // za blockHashMapu koristimo njegovu trenutnu adresu koju smo izracunali na pocetku metode
     remove(blockHashMap, current_address);
 
     // za blockAddressHashMap koristimo njegovu originalnu adresu koja je zadata kao argument metode
     remove(blockAddressHashMap, (intptr_t)address);
+
+    formListFromSegments(list_of_free_segments, segments, totalSegments);
 }
 
 // funckija koja deinicijalizuje sve strukture i promjenljive
@@ -210,6 +244,12 @@ void cleanup_segments() {
         // Free the segments array
         free(segments);
         segments = NULL; // Set to NULL to prevent dangling pointers
+    }
+
+    if (list_of_free_segments != NULL) {
+        freeList(list_of_free_segments);
+        free(list_of_free_segments);
+        list_of_free_segments = NULL;
     }
 
     // Step 2: Clean up blockHashMap

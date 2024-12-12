@@ -131,7 +131,6 @@ int main()
 		return 1;
 	}
 
-	create_stress_test_threads(connectSocket, NUM_THREADS_STRESS_TEST);
 
 	while (strcmp(buffer, "x") != 0)
 	{
