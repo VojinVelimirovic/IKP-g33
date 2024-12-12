@@ -16,7 +16,7 @@
 #define SERVER_PORT 27016
 #define BUFFER_SIZE 256
 
-#define NUM_THREADS_STRESS_TEST 20
+#define NUM_THREADS_STRESS_TEST 10
 typedef struct ThreadArgs {
 	SOCKET connectSocket;
 } ThreadArgs;

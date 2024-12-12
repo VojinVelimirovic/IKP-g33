@@ -61,7 +61,7 @@ DWORD WINAPI processRequest(LPVOID param) {
 				}
 			}
 
-			//drawMemorySegments();
+			drawMemorySegments();
 
 			// Send the response back to the client
 			if (send(request.clientSocket, responseBuffer, (int)strlen(responseBuffer), 0) == SOCKET_ERROR) {
