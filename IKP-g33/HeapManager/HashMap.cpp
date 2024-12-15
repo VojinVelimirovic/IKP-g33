@@ -5,6 +5,7 @@ static int hash(int key, int size) {
     return key % size;
 }
 
+// Kreira novu hash mapu sa zadatom velicinom.
 HashMap* createHashMap(int size) {
     HashMap* map = (HashMap*)malloc(sizeof(HashMap));
     map->size = size;
@@ -12,6 +13,7 @@ HashMap* createHashMap(int size) {
     return map;
 }
 
+// Dodavanje para (kljuc, vrednost)
 void put(HashMap* map, int key, void* value) {
     int index = hash(key, map->size);
     HashMapEntry* entry = map->table[index];
@@ -22,6 +24,7 @@ void put(HashMap* map, int key, void* value) {
     map->table[index] = newEntry;
 }
 
+// Preuzimanje na osnovu kljuca
 void* get(HashMap* map, int key) {
     int index = hash(key, map->size);
     HashMapEntry* entry = map->table[index];
@@ -34,6 +37,7 @@ void* get(HashMap* map, int key) {
     return (void*)-1; // Key not found
 }
 
+// Oslobadja memoriju zauzetu hash mapom
 void deleteHashMap(HashMap* map) {
     for (int i = 0; i < map->size; i++) {
         HashMapEntry* entry = map->table[i];
@@ -47,6 +51,7 @@ void deleteHashMap(HashMap* map) {
     free(map);
 }
 
+// Preuzimanje na osnovu vrednosti
 int findKeyByValue(HashMap* map, intptr_t value) {
     for (int i = 0; i < map->size; i++) {
         HashMapEntry* entry = map->table[i];
@@ -60,6 +65,7 @@ int findKeyByValue(HashMap* map, intptr_t value) {
     return -1; // Return -1 if the value is not found
 }
 
+// Uklanja element sa zadatim kljucem iz hash mape
 void remove(HashMap* map, int key) {
     int index = hash(key, map->size);
     HashMapEntry* entry = map->table[index];

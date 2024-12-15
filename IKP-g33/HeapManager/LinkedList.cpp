@@ -33,7 +33,7 @@ void append(LinkedList* list, int address, int free_segments) {
 void printList(const LinkedList* list) {
     ListNode* current = list->head;
     while (current) {
-        printf("%d -> ", current->address);
+        printf("address: %d, free_segments: %d -> ", current->address, current->free_segments);
         current = current->next;
     }
     printf("NULL\n");
@@ -51,7 +51,7 @@ void freeList(LinkedList* list) {
     free(list);
 }
 
-void updateList(LinkedList* list, int start_address, int requiredSegments) {
+void addBlockToList(LinkedList* list, int start_address, int requiredSegments) {
     if (!list || !list->head) {
         printf("Error: The list is empty or uninitialized.\n");
         return;
@@ -59,42 +59,58 @@ void updateList(LinkedList* list, int start_address, int requiredSegments) {
 
     ListNode* current = list->head;
     ListNode* prev = NULL;
+    int end_address = start_address + requiredSegments;
 
     while (current) {
-        // Check if the current node matches the block start address
-        if (current->address == start_address) {
-            current->address += requiredSegments;
-            current->free_segments -= requiredSegments;
-            return;
-        }
+        // If the node is fully consumed by the allocated block
+        if (current->address >= start_address && current->address < end_address) {
+            int overlap_start = current->address;
+            int overlap_end = overlap_start + current->free_segments;
 
-        // Check if the block should be inserted in a gap
-        if (current->address > start_address) {
-            ListNode* newNode = (ListNode*)malloc(sizeof(ListNode));
-            if (!newNode) {
-                perror("Failed to allocate memory for new node");
-                exit(EXIT_FAILURE);
-            }
-
-            newNode->address = start_address + requiredSegments; // Remaining segments start here
-            newNode->free_segments = current->address - newNode->address;
-            newNode->next = current;
-
-            if (prev) {
-                prev->next = newNode;
+            if (overlap_end > end_address) {
+                // Partial overlap: Update node to start after the allocated block
+                current->address = end_address;
+                current->free_segments = overlap_end - end_address;
+                break;
             }
             else {
-                list->head = newNode;
+                // Full overlap: Remove the current node
+                ListNode* temp = current;
+                if (prev) {
+                    prev->next = current->next;
+                }
+                else {
+                    list->head = current->next;
+                }
+                current = current->next;
+                free(temp);
+                continue;
             }
-            return;
+        }
+
+        // If the allocation starts within the current node
+        if (current->address < start_address && current->address + current->free_segments > start_address) {
+            int overlap_end = current->address + current->free_segments;
+            current->free_segments = start_address - current->address;
+
+            if (overlap_end > end_address) {
+                // Split the current node into two nodes
+                ListNode* newNode = (ListNode*)malloc(sizeof(ListNode));
+                if (!newNode) {
+                    perror("Failed to allocate memory for new node");
+                    exit(EXIT_FAILURE);
+                }
+                newNode->address = end_address;
+                newNode->free_segments = overlap_end - end_address;
+                newNode->next = current->next;
+                current->next = newNode;
+            }
+            break;
         }
 
         prev = current;
         current = current->next;
     }
-
-    // If the block address is beyond the last node, append it to the list
-    append(list, start_address + requiredSegments, requiredSegments);
 }
 
 void formListFromSegments(LinkedList* list, TMemorySegment* segments, int totalSegments) {

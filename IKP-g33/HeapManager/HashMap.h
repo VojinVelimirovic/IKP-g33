@@ -20,10 +20,21 @@ typedef struct HashMap {
     HashMapEntry** table;      // Array of pointers to HashMapEntry
 } HashMap;
 
+// Kreira novu hash mapu sa zadatom velicinom.
 HashMap* createHashMap(int size);
+
+// Dodavanje para (kljuc, vrednost)
 void put(HashMap* map, int key, void* value);
+
+// Preuzimanje na osnovu kljuca
 void* get(HashMap* map, int key);
+
+// Oslobadja memoriju zauzetu hash mapom
 void deleteHashMap(HashMap* map);
+
+// Preuzimanje na osnovu vrednosti
 int findKeyByValue(HashMap* map, intptr_t value);
+
+// Uklanja element sa zadatim kljucem iz hash mape
 void remove(HashMap* map, int key);
 #endif // HASHMAP_H

@@ -8,7 +8,7 @@ void initializeQueue(Queue* queue) {
     InitializeConditionVariable(&queue->notEmpty); // signalizira threadu kada queue nije vise prazan
 }
 
-// Dodaj request
+// Dodavanje novog zahteva (Request) na kraj reda.
 void enqueue(Queue* queue, Request request) {
     Node* newNode = (Node*)malloc(sizeof(Node));
     if (newNode == NULL) {
@@ -32,7 +32,8 @@ void enqueue(Queue* queue, Request request) {
     WakeConditionVariable(&queue->notEmpty);
 }
 
-// Pokupi request
+// Skida prvi zahtev (Request) iz reda i upisuje ga u prosledjeni pokazivac.
+// Vraca `true` ako je zahtev pokupljen, ili `false` ako je red prazan.
 bool dequeue(Queue* queue, Request* request) {
     EnterCriticalSection(&queue->lock);
 
@@ -55,12 +56,11 @@ bool dequeue(Queue* queue, Request* request) {
     }
 
     free(temp);
-
     LeaveCriticalSection(&queue->lock);
     return true;
 }
 
-// Free the queue and its resources
+// Oslobadja red i zauzete resurse, cleanup
 void freeQueue(Queue* queue) {
     EnterCriticalSection(&queue->lock);
     Node* current = queue->front;

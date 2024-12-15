@@ -6,15 +6,25 @@ typedef struct ListNode {
     struct ListNode* next;
 } ListNode;
 
-// Linked list structure
 typedef struct LinkedList {
     ListNode* head;
 } LinkedList;
 
-// Function declarations
+
+// inicijalizacija liste
 void initList(LinkedList* list);
+
+// dodavanje novog elementa
 void append(LinkedList* list, int address, int free_segments);
-void printList(const LinkedList* list);
-void freeList(LinkedList* list);
-void updateList(LinkedList* list, int start_address, int requiredSegments);
+
+// azuriranje stanja liste kada se ubaci novi blok
+void addBlockToList(LinkedList* list, int start_address, int requiredSegments);
+
+// pravljenje liste iznova, od nule
 void formListFromSegments(LinkedList* list, TMemorySegment* segments, int totalSegments);
+
+// oslobadjanje zauzetih resursa, cleanup
+void freeList(LinkedList* list);
+
+// prikaz trenutnog stanja liste
+void printList(const LinkedList* list);

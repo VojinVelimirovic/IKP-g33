@@ -4,16 +4,15 @@
 #include "Memory.h"
 #include "LinkedList.h"
 
-// Global memory and hashmaps
 TMemorySegment* segments = NULL;
-int totalSegments = 0; //trenutan broj segmenata. ovaj broj se menja i nalazi se u ovom fajlu zato sto nam ne treba van njega
+int totalSegments = 0;          // trenutan broj segmenata. ovaj broj se menja i nalazi se u ovom fajlu zato sto nam ne treba van njega
 HashMap* blockHashMap = NULL;
 HashMap* blockAddressHashMap = NULL;
 LinkedList* list_of_free_segments = NULL;
 
-int free_memory_error = 0;
+int free_memory_error = 0;      // error code u free_memory, koristi ga server da preciznije javi gresku
 
-// Helper: Initialize memory segments
+// inicijalizacija struktura podataka
 void initializeMemory(int initialSize) {
     segments = (TMemorySegment*)malloc(initialSize * sizeof(TMemorySegment));
     for (int i = 0; i < initialSize; i++) {
@@ -30,7 +29,7 @@ void initializeMemory(int initialSize) {
     blockAddressHashMap = createHashMap(128);
 }
 
-// Helper: Resize memory
+// dodavanje dodatnih segmenata kada alokacija u trenutnom nizu segmenata nije moguca
 void addSegments(int additionalSegments) {
     //ponovo allocuje segmente tako da ih ima vise bez unistavanja postojecih segmenata
     segments = (TMemorySegment*)realloc(segments, (totalSegments + additionalSegments) * sizeof(TMemorySegment));
@@ -43,6 +42,7 @@ void addSegments(int additionalSegments) {
     totalSegments += additionalSegments; //menjamo ukupan broj segmenata
 }
 
+// algoritam za nalazenje slobodnih segmenata
 FirstFitResult firstFit(int size) {
     FirstFitResult result;
     result.startIndex = -1;
@@ -91,6 +91,7 @@ FirstFitResult firstFit(int size) {
     return result;
 }
 
+// funkcija za alociranje bloka memorije odredjene velicine
 void* allocate_memory(int size) {
     FirstFitResult fit = firstFit(size);
     int requiredSegments = (size + SEGMENT_SIZE - 1) / SEGMENT_SIZE;
@@ -114,7 +115,7 @@ void* allocate_memory(int size) {
     block->size = size;
     block->segments_taken = requiredSegments;
 
-    updateList(list_of_free_segments, fit.startIndex, requiredSegments);
+    addBlockToList(list_of_free_segments, fit.startIndex, requiredSegments);
 
     // Taj blok guramo u blockHashMap. kljuc je start adresa a vrednost je sam blok.
     put(blockHashMap, block->start_address, block);
@@ -127,6 +128,7 @@ void* allocate_memory(int size) {
     //ovu return adresu cemo ispisati klijentu na konzolu i on ce nju kasnije da koristi da bi oslobidio blok
 }
 
+// funckija za oslobadjanje bloka memorije na odredjenoj adresi
 void free_memory(void* address) {
     free_memory_error = 0;
     // iz blockAddressHashMap izvlacimo trenutnu adresu i konvertujemo je u int
@@ -159,6 +161,7 @@ void free_memory(void* address) {
         // Unlock the segment
         ReleaseMutex(segments[i].mutex);
     }
+    append(list_of_free_segments, block->start_address, block->segments_taken);
 
     // brojimo slobodne segmente
     int freeSegmentsCount = 0;
