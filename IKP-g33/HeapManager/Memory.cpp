@@ -110,13 +110,11 @@ void* allocate_memory(int size) {
         segments[i].isFree = false;
         ReleaseMutex(segments[i].mutex);
     }
-
     // Sada stvaramo blok
     TBlock* block = (TBlock*)malloc(sizeof(TBlock));
     block->start_address = fit.startIndex;
     block->size = size;
     block->segments_taken = requiredSegments;
-
     addBlockToList(list_of_free_segments, fit.startIndex, requiredSegments);
 
     printList(list_of_free_segments);
@@ -137,14 +135,12 @@ void free_memory(void* address) {
     free_memory_error = 0;
     // iz blockAddressHashMap izvlacimo trenutnu adresu i konvertujemo je u int
     int current_address = (int)(intptr_t)get(blockAddressHashMap, (intptr_t)address);
-
     // ERROR: Adresa ne postoji u hashmapi adresa
     if (current_address == -1) {
         free_memory_error = 1;
         printf("ERROR: Invalid address. There is no record for address: %d.\n", (int)address);
         return;
     }
-
     // na osnovu te adrese izblacimo blok iz blockHashMap
     TBlock* block = (TBlock*)get(blockHashMap, current_address);
     // ERROR: Adresa ne postoji u hashmapi blokova
@@ -158,13 +154,16 @@ void free_memory(void* address) {
     for (int i = block->start_address; i < block->start_address + block->segments_taken; i++) {
         // Lock the segment
         WaitForSingleObject(segments[i].mutex, INFINITE);
-
         // Mark the segment as free
         segments[i].isFree = true;
 
         // Unlock the segment
         ReleaseMutex(segments[i].mutex);
     }
+    remove(blockHashMap, current_address);
+
+    // za blockAddressHashMap koristimo njegovu originalnu adresu koja je zadata kao argument metode
+    remove(blockAddressHashMap, (intptr_t)address);
     append(list_of_free_segments, block->start_address, block->segments_taken);
 
     // brojimo slobodne segmente
@@ -233,10 +232,7 @@ void free_memory(void* address) {
     // Sada bukvalno izbacujemo blok iz obe hash mape
 
     // za blockHashMapu koristimo njegovu trenutnu adresu koju smo izracunali na pocetku metode
-    remove(blockHashMap, current_address);
-
-    // za blockAddressHashMap koristimo njegovu originalnu adresu koja je zadata kao argument metode
-    remove(blockAddressHashMap, (intptr_t)address);
+    
 
     formListFromSegments(list_of_free_segments, segments, totalSegments);
     printList(list_of_free_segments);
@@ -388,7 +384,7 @@ void drawMemorySegments2() {
                         printf("|%3d| ", originalStartAddress);
                     }
                     else {
-                        printf("| ? | "); // If the original start address is not found, show '?'
+                        printf("| s | "); // If the original start address is not found, show '?'
                     }
                 }
                 else {
@@ -408,7 +404,7 @@ void drawMemorySegments2() {
                         printf("|%3d| ", foundAddress);
                     }
                     else {
-                        printf("| ? | "); // If no valid block is found
+                        printf("| f | "); // If no valid block is found
                     }
                 }
             }
@@ -423,5 +419,17 @@ void drawMemorySegments2() {
             printf("+---+ ");
         }
         printf("\n\n"); // Add a blank line between rows for clarity
+    }
+}
+
+void printAllBlocks(HashMap* map) {
+    for (int i = 0; i < map->size; i++) {
+        HashMapEntry* entry = map->table[i];
+        while (entry) {
+            TBlock* block = (TBlock*)entry->value; // Assuming value is a pointer to a TBlock
+            printf("start_address: %d, size: %d, segments_taken: %d\n",
+                block->start_address, block->size, block->segments_taken);
+            entry = entry->next;
+        }
     }
 }
