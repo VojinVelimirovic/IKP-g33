@@ -28,3 +28,5 @@ void cleanup_segments();
 
 // funckija koja graficki prikazuje trenutni izgled segments niza
 void drawMemorySegments();
+
+void drawMemorySegments2();

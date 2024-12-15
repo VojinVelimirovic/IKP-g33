@@ -351,3 +351,77 @@ void drawMemorySegments() {
         printf("\n");
     }
 }
+
+void drawMemorySegments2() {
+    if (segments == NULL || totalSegments <= 0) {
+        printf("No memory segments to display.\n");
+        return;
+    }
+
+    int maxColumns = 10; // max broj kolona
+    printf("------------------------- SEGMENTS -------------------------\n\n");
+    for (int rowStart = 0; rowStart < totalSegments; rowStart += maxColumns) {
+        int rowEnd = (rowStart + maxColumns < totalSegments) ? rowStart + maxColumns : totalSegments;
+
+        // Print addresses above the squares
+        for (int i = rowStart; i < rowEnd; i++) {
+            printf("%3d   ", segments[i].address);
+        }
+        printf("\n");
+
+        // Print top line of squares
+        for (int i = rowStart; i < rowEnd; i++) {
+            printf("+---+ ");
+        }
+        printf("\n");
+
+        // Print middle line with original start_address or space
+        for (int i = rowStart; i < rowEnd; i++) {
+            if (!segments[i].isFree) {
+                // Find the block corresponding to the segment's current address
+                int currentAddress = segments[i].address;
+                TBlock* block = (TBlock*)get(blockHashMap, currentAddress);
+
+                if (block != (void*)-1) {
+                    int originalStartAddress = (int)(intptr_t)findKeyByValue(blockAddressHashMap, block->start_address);
+                    if (originalStartAddress != -1) {
+                        printf("|%3d| ", originalStartAddress);
+                    }
+                    else {
+                        printf("| ? | "); // If the original start address is not found, show '?'
+                    }
+                }
+                else {
+                    // Find the previous filled segment and its block
+                    int foundAddress = -1;
+                    for (int j = i - 1; j >= 0; j--) {
+                        if (!segments[j].isFree) {
+                            int prevAddress = segments[j].address;
+                            TBlock* prevBlock = (TBlock*)get(blockHashMap, prevAddress);
+                            if (prevBlock != (void*)-1 && prevBlock->start_address == prevAddress) {
+                                foundAddress = (int)(intptr_t)findKeyByValue(blockAddressHashMap, prevBlock->start_address);
+                                break;
+                            }
+                        }
+                    }
+                    if (foundAddress != -1) {
+                        printf("|%3d| ", foundAddress);
+                    }
+                    else {
+                        printf("| ? | "); // If no valid block is found
+                    }
+                }
+            }
+            else {
+                printf("|   | "); // For free segments
+            }
+        }
+        printf("\n");
+
+        // Print bottom line of squares
+        for (int i = rowStart; i < rowEnd; i++) {
+            printf("+---+ ");
+        }
+        printf("\n\n"); // Add a blank line between rows for clarity
+    }
+}

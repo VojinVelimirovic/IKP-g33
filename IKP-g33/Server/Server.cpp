@@ -62,6 +62,7 @@ DWORD WINAPI processRequest(LPVOID param) {
 			}
 
 			drawMemorySegments();
+            drawMemorySegments2();
 
 			// Send the response back to the client
 			if (send(request.clientSocket, responseBuffer, (int)strlen(responseBuffer), 0) == SOCKET_ERROR) {
@@ -210,6 +211,7 @@ int main()
             fgets(inputBuffer, sizeof(inputBuffer), stdin); // Read the input
             if (strcmp(inputBuffer, "draw\n") == 0) {
                 drawMemorySegments(); // Call your function here
+                drawMemorySegments2();
             }
         }
     }
