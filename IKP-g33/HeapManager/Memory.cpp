@@ -81,11 +81,14 @@ FirstFitResult firstFit(int size) {
     // allocate_memory ce proveravati da li je startIndex -1. Ako jeste znaci da treba da prosiri broj segmenata
     //result.missingSegments = requiredSegments - count;
 
-    if (prev->address + prev->free_segments == totalSegments) {
-        result.missingSegments = requiredSegments - prev->free_segments;
+    if (prev == NULL) {
+        result.missingSegments = requiredSegments;                       // Ako nema slobodnih segmenata u nizu (lista je prazna)
+    }
+    else if (prev->address + prev->free_segments == totalSegments) {
+        result.missingSegments = requiredSegments - prev->free_segments; // Ako je posljednji segment u nizu (ili vise njih) slobodan
     }
     else {
-        result.missingSegments = requiredSegments;
+        result.missingSegments = requiredSegments;                       // Ako posljednji segment u nizu nije slobodan
     }
     
     return result;
@@ -193,17 +196,20 @@ void free_memory(void* address) {
                     if (segments[j].isFree == false && segments[j].address > i) {
                         //izvukli smo blok cija se start adresa treba smanjiti za 1
                         TBlock* affectedBlock = (TBlock*)get(blockHashMap, segments[j].address);
-                        if (affectedBlock != NULL) {
+                        if (affectedBlock != (TBlock*)-1) {
                             // nasli smo njegovu originalnu adresu
                             // zato sto je njegova trenutna startna adresa vrednost blockAddressHashMape
                             // a kljuc odatle je njegova originalna adresa
                             int original_address = findKeyByValue(blockAddressHashMap, (intptr_t)affectedBlock->start_address);
-
+                            printf("\n\nOriginal address: %d\n", original_address);
                             if (original_address != -1) {
                                 // Smanjujemo mu trenutnu startnu adresu u blockHashMap
+                                remove(blockHashMap, affectedBlock->start_address);
                                 affectedBlock->start_address--;
-
+                                printf("New address: %d\n\n", affectedBlock->start_address);
+                                put(blockHashMap, affectedBlock->start_address, affectedBlock);
                                 // Azuriramo mu trenutnu startnu adresu u blockAddressHashMap na kljucu njegove originalne startne adrese
+                                remove(blockAddressHashMap, original_address);
                                 put(blockAddressHashMap, original_address, (void*)(intptr_t)affectedBlock->start_address);
                             }
                         }
