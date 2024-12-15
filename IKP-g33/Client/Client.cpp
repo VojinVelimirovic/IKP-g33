@@ -16,7 +16,7 @@
 #define SERVER_PORT 27016
 #define BUFFER_SIZE 256
 
-#define NUM_THREADS_STRESS_TEST 10
+#define STRESS_TEST_THEADS_NUM 10
 typedef struct ThreadArgs {
 	SOCKET connectSocket;
 } ThreadArgs;
@@ -41,8 +41,8 @@ unsigned __stdcall stress_test_thread(void* args) {
 	return 0;
 }
 
-void create_stress_test_threads(SOCKET connectSocket, int numThreads) {
-	HANDLE threads[NUM_THREADS_STRESS_TEST];
+void run_stress_test(SOCKET connectSocket, int numThreads) {
+	HANDLE threads[STRESS_TEST_THEADS_NUM];
 	ThreadArgs threadArgs = { connectSocket };
 
 	// Create multiple threads
@@ -131,6 +131,7 @@ int main()
 		return 1;
 	}
 
+	//run_stress_test(connectSocket, STRESS_TEST_THEADS_NUM);
 
 	while (strcmp(buffer, "x") != 0)
 	{

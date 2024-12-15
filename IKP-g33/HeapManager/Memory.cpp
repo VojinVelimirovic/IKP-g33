@@ -55,13 +55,12 @@ FirstFitResult firstFit(int size) {
     ListNode* current = list_of_free_segments->head;
     while (current != NULL) {
         if (current->free_segments >= requiredSegments) {
-            result.startIndex = current->address - requiredSegments + 1;
+            result.startIndex = current->address;
             return result;
         }
         prev = current;
         current = current->next;
     }
-
 
     //for (int i = 0; i < totalSegments; i++) {
     //    if (segments[i].isFree) {
@@ -119,6 +118,8 @@ void* allocate_memory(int size) {
     block->segments_taken = requiredSegments;
 
     addBlockToList(list_of_free_segments, fit.startIndex, requiredSegments);
+
+    printList(list_of_free_segments);
 
     // Taj blok guramo u blockHashMap. kljuc je start adresa a vrednost je sam blok.
     put(blockHashMap, block->start_address, block);
@@ -238,6 +239,7 @@ void free_memory(void* address) {
     remove(blockAddressHashMap, (intptr_t)address);
 
     formListFromSegments(list_of_free_segments, segments, totalSegments);
+    printList(list_of_free_segments);
 }
 
 // funckija koja deinicijalizuje sve strukture i promjenljive
