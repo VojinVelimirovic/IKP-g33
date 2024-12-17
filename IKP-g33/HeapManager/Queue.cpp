@@ -1,5 +1,6 @@
 #include "queue.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 // Initialize the queue
 void initializeQueue(Queue* queue) {
@@ -13,6 +14,7 @@ void enqueue(Queue* queue, Request request) {
     Node* newNode = (Node*)malloc(sizeof(Node));
     if (newNode == NULL) {
         // Handle memory allocation failure
+        printf("Memory allocation failed for newNode\n");
         return;
     }
     newNode->request = request;
@@ -29,7 +31,7 @@ void enqueue(Queue* queue, Request request) {
     }
 
     LeaveCriticalSection(&queue->lock);
-    WakeConditionVariable(&queue->notEmpty);
+    WakeAllConditionVariable(&queue->notEmpty);
 }
 
 // Skida prvi zahtev (Request) iz reda i upisuje ga u prosledjeni pokazivac.
@@ -79,4 +81,23 @@ void freeQueue(Queue* queue) {
 
     LeaveCriticalSection(&queue->lock);
     DeleteCriticalSection(&queue->lock); // Clean up the critical section
+}
+
+// Print trenutni broj elemenata
+void printQueueSize(Queue* queue) {
+    EnterCriticalSection(&queue->lock); // Lock the queue to ensure thread safety
+
+    int count = 0;
+    Node* current = queue->front; // Start from the front of the queue
+
+    // Traverse the queue and count the nodes
+    while (current != NULL) {
+        count++;
+        current = current->next; // Move to the next node
+    }
+
+    LeaveCriticalSection(&queue->lock); // Unlock the queue
+
+    // Print the number of members in the queue
+    printf("Current number of members in the queue: %d\n", count);
 }

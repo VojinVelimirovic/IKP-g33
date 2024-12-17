@@ -117,8 +117,6 @@ void* allocate_memory(int size) {
     block->segments_taken = requiredSegments;
     addBlockToList(list_of_free_segments, fit.startIndex, requiredSegments);
 
-    printList(list_of_free_segments);
-
     // Taj blok guramo u blockHashMap. kljuc je start adresa a vrednost je sam blok.
     put(blockHashMap, block->start_address, block);
     // Taj blok takodje guramo u blockAddressHashMap. kljuc i vrednost su start adresa bloka. 
@@ -206,7 +204,7 @@ void free_memory(void* address) {
                                 // Smanjujemo mu trenutnu startnu adresu u blockHashMap
                                 remove(blockHashMap, affectedBlock->start_address);
                                 affectedBlock->start_address--;
-                                printf("New address: %d\n\n", affectedBlock->start_address);
+                                printf("New address: %d\n", affectedBlock->start_address);
                                 put(blockHashMap, affectedBlock->start_address, affectedBlock);
                                 // Azuriramo mu trenutnu startnu adresu u blockAddressHashMap na kljucu njegove originalne startne adrese
                                 remove(blockAddressHashMap, original_address);
@@ -229,13 +227,9 @@ void free_memory(void* address) {
             }
         }
     }
-    // Sada bukvalno izbacujemo blok iz obe hash mape
 
-    // za blockHashMapu koristimo njegovu trenutnu adresu koju smo izracunali na pocetku metode
-    
-
+    // Pravimo listu slobodnih segmenata iznova
     formListFromSegments(list_of_free_segments, segments, totalSegments);
-    printList(list_of_free_segments);
 }
 
 // funckija koja deinicijalizuje sve strukture i promjenljive
@@ -255,7 +249,6 @@ void cleanup_segments() {
 
     if (list_of_free_segments != NULL) {
         freeList(list_of_free_segments);
-        free(list_of_free_segments);
         list_of_free_segments = NULL;
     }
 

@@ -9,6 +9,7 @@
 typedef struct {
     bool isAllocate;         // True for allocation, false for deallocation
     int value;               // Size to allocate or address to deallocate
+    int reqId;               // debugging
     SOCKET clientSocket;
 } Request;
 
@@ -38,4 +39,6 @@ bool dequeue(Queue* queue, Request* request);
 // Oslobadja red i zauzete resurse, cleanup
 void freeQueue(Queue* queue);
 
+// Print trenutni broj elemenata
+void printQueueSize(Queue* queue);
 #endif // QUEUE_H

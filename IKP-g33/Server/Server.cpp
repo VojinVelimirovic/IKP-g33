@@ -23,56 +23,81 @@
 
 // Atomic flag for server shutdown
 volatile LONG serverRunning = 1;
+int reqId = 0;
+
+Queue requestQueue;
 
 
 // Function for worker threads to process requests
 DWORD WINAPI processRequest(LPVOID param) {
 	Queue* queue = (Queue*)param;
-	DWORD threadId = GetCurrentThreadId(); // Get the current thread ID
+	DWORD threadId = GetCurrentThreadId();
 
 	while (serverRunning /*|| queue->front != NULL*/) {
 		Request request;
-		if (dequeue(queue, &request)) {
+        //printf("%lu: Waiting...\n", threadId);
+        //printf("Thread ID %lu: Checking for new requests...\n", threadId);
+		
+        if (dequeue(queue, &request)) {
 			char responseBuffer[BUFFER_SIZE]; // Buffer to send responses back to the client
 
 			// Log which thread is processing the request
 			if (request.isAllocate) {
+				//printf("%lu: Processing %d\n", threadId, request.reqId);
 				printf("Thread ID %lu: Processing allocation request for %d bytes.\n", threadId, request.value);
 				int allocatedBlockAddress = (int)allocate_memory(request.value);
 				if (allocatedBlockAddress != -1) {
 					printf("Thread ID %lu: SUCCESS: Allocated %d bytes at address: %d\n\n", threadId, request.value, allocatedBlockAddress);
-					snprintf(responseBuffer, BUFFER_SIZE, "SUCCESS: Allocated %d bytes at address: %d\n\n", request.value, allocatedBlockAddress);
+					snprintf(responseBuffer, BUFFER_SIZE, "SUCCESS: Allocated %d bytes at address: %d\n", request.value, allocatedBlockAddress);
 				}
 				else {
 					printf("ERROR: Memory allocation failed for %d bytes.\n", request.value);
-					strcpy_s(responseBuffer, "ERROR: Memory allocation failed.");
+					strcpy_s(responseBuffer, "ERROR: Memory allocation failed.\n");
 				}
 			}
 			else {
 				printf("Thread ID %lu: Processing deallocation request for address: %d.\n", threadId, request.value);
 				free_memory((void*)request.value);
 				if (free_memory_error == 0) {
-					printf("Thread ID %lu: SUCCESS: Memory freed at address: %d\n", threadId, request.value);
-					snprintf(responseBuffer, BUFFER_SIZE, "SUCCESS: Memory freed at address: %d\n\n", request.value);
+					printf("Thread ID %lu: SUCCESS: Memory freed at address: %d\n\n", threadId, request.value);
+					snprintf(responseBuffer, BUFFER_SIZE, "SUCCESS: Memory freed at address: %d\n", request.value);
 				}
 				else {
 					printf("ERROR: Failed to free memory at address: %d.\n", request.value);
-					snprintf(responseBuffer, BUFFER_SIZE, "ERROR: Failed to free memory at address: %d.\n\n", request.value);
+					snprintf(responseBuffer, BUFFER_SIZE, "ERROR: Failed to free memory at address: %d.\n", request.value);
 				}
 			}
 
-			drawMemorySegments();
-            drawMemorySegments2();
+			//drawMemorySegments();
+            //drawMemorySegments2();
 
+            //printf("%lu: Done %d\n", threadId, request.reqId);
 			// Send the response back to the client
 			if (send(request.clientSocket, responseBuffer, (int)strlen(responseBuffer), 0) == SOCKET_ERROR) {
 				printf("send failed with error: %d\n", WSAGetLastError());
-			}
+            }
+            else {
+                // printf("%lu: Sent %d\n", threadId, request.reqId);
+            }
 		}
 	}
 	return 0;
 }
 
+// Function to check if '\n' appears at least twice in the string
+int checkBufferOverflow(const char* dataBuffer) {
+    int count = 0;
+
+    while (*dataBuffer) {
+        if (*dataBuffer == '\n') {
+            count++;
+        }
+        dataBuffer++;
+    }
+
+    // Return 1 if newline appears at least twice, otherwise return 0
+    return count >= 2;
+}
 
 int main()
 {
@@ -128,7 +153,6 @@ int main()
     int clientAddrSize = sizeof(struct sockaddr_in);
 
     // Initialize the queue
-    Queue requestQueue;
     initializeQueue(&requestQueue);
 
     // Create worker threads
@@ -186,17 +210,31 @@ int main()
                 if (iResult > 0) {
                     dataBuffer[iResult] = '\0';
 
+                    if (checkBufferOverflow(dataBuffer)) {
+                        printf("\nERROR: Input Buffer Overflow! Request not proccessed\n");
+                        char overflow[BUFFER_SIZE] = "ERROR: Input Buffer Overflow! Request not proccessed, please try again.\n";
+                        if (send(clientSocket, overflow, (int)strlen(overflow), 0) == SOCKET_ERROR) {
+                            printf("send failed with error: %d\n", WSAGetLastError());
+                        }
+                    }
+
                     Request newRequest;
+                    newRequest.reqId = reqId++;
                     newRequest.clientSocket = clientSocket;
 
                     char* token = strtok(dataBuffer, ",");
                     newRequest.isAllocate = (atoi(token) == 1);
 
                     token = strtok(NULL, ",");
-                    newRequest.value = atoi(token);
-
-                    enqueue(&requestQueue, newRequest);
-                    WakeConditionVariable(&requestQueue.notEmpty);
+                    if (token) { // Check if the token is not NULL before converting
+                        newRequest.value = atoi(token);
+                        enqueue(&requestQueue, newRequest);
+                        WakeConditionVariable(&requestQueue.notEmpty);
+                    }
+                    else {
+                        printf("Invalid request from client.\n");
+                        continue;
+                    }
                 }
                 else if (iResult == 0 || WSAGetLastError() != WSAEWOULDBLOCK) {
                     printf("Client disconnected or error: %d\n", WSAGetLastError());
@@ -207,11 +245,18 @@ int main()
         }
 
         // Check for user input
-        if (_kbhit()) {  // Check if a key was pressed
-            fgets(inputBuffer, sizeof(inputBuffer), stdin); // Read the input
+        if (_kbhit()) {
+            fgets(inputBuffer, sizeof(inputBuffer), stdin);
             if (strcmp(inputBuffer, "draw\n") == 0) {
-                drawMemorySegments(); // Call your function here
+                drawMemorySegments();
                 drawMemorySegments2();
+            }
+            else if (strcmp(inputBuffer, "req\n") == 0) {
+                printQueueSize(&requestQueue);
+            }
+            else if (strcmp(inputBuffer, "quit\n") == 0) {
+                serverRunning = 0;
+                printf("Closing server...\n");
             }
         }
     }
@@ -220,7 +265,7 @@ int main()
     serverRunning = 0;
     for (int i = 0; i < threadPoolSize; i++) {
         WakeConditionVariable(&requestQueue.notEmpty);
-        WaitForSingleObject(threadPool[i], INFINITE);
+        WaitForSingleObject(threadPool[i], 100);
         CloseHandle(threadPool[i]);
     }
     free(threadPool);
@@ -233,6 +278,9 @@ int main()
     }
     WSACleanup();
     cleanup_segments();
+
+    printf("Server closed. Press any key to exit\n");
+    _getch();
 
     return 0;
 }
