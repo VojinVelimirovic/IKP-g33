@@ -31,4 +31,6 @@ void drawMemorySegments();
 
 void drawMemorySegments2();
 
+void drawMemorySegments3();
+
 void printAllBlocks(HashMap* map);

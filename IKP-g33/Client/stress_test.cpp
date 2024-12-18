@@ -61,7 +61,7 @@ void run_stress_test(SOCKET connectSocket, int numThreads, int enableSleep) {
     }
 
     // Wait for all threads to finish
-    WaitForMultipleObjects(numThreads, threads, TRUE, INFINITE);
+    WaitForMultipleObjects(numThreads, threads, TRUE, 1000);
 
     // Close thread handles
     for (int i = 0; i < numThreads; i++) {

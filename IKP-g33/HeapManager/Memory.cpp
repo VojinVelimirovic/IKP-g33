@@ -122,7 +122,7 @@ void* allocate_memory(int size) {
     // Taj blok takodje guramo u blockAddressHashMap. kljuc i vrednost su start adresa bloka. 
     // Vrednost se kasnije moze promijeniti tokom defragmentacije.
     put(blockAddressHashMap, block->start_address, (void*)(intptr_t)block->start_address);
-
+    drawMemorySegments3();
     // block->start_address je index
     return (void*)(intptr_t)block->start_address; //return ove funkcije je int konvertovan u (void*) start_addresse
     //ovu return adresu cemo ispisati klijentu na konzolu i on ce nju kasnije da koristi da bi oslobidio blok
@@ -190,6 +190,13 @@ void free_memory(void* address) {
                 // Za svaki ZAUZET segment nakon slobodnog segmenta kojeg izbacujemo
                 // proveravamo da li postoji blok cija se start adresa podudara sa njegovom adresom
                 // ukoliko postoji on ce se izvuci u affectedBlock i tu cemo mu smanjiti start addresu za 1
+                if (!CloseHandle(segments[i].mutex)) {
+                    DWORD error = GetLastError();
+                    printf("CloseHandle failed for segment %d with error %lu\n", i, error);
+                }
+                else {
+                    printf("Mutex closed successfully for segment %d\n", i);
+                }
                 for (int j = 0; j < totalSegments; j++) {
                     if (segments[j].isFree == false && segments[j].address > i) {
                         //izvukli smo blok cija se start adresa treba smanjiti za 1
@@ -227,7 +234,6 @@ void free_memory(void* address) {
             }
         }
     }
-
     // Pravimo listu slobodnih segmenata iznova
     formListFromSegments(list_of_free_segments, segments, totalSegments);
 }
@@ -412,6 +418,46 @@ void drawMemorySegments2() {
             printf("+---+ ");
         }
         printf("\n\n"); // Add a blank line between rows for clarity
+    }
+}
+
+void drawMemorySegments3() {
+    if (segments == NULL || totalSegments <= 0) {
+        printf("No memory segments to display.\n");
+        return;
+    }
+
+    int maxColumns = 10; // max broj kolona
+    printf("------------------------- SEGMENTS -------------------------\n\n");
+    for (int rowStart = 0; rowStart < totalSegments; rowStart += maxColumns) {
+        int rowEnd = (rowStart + maxColumns < totalSegments) ? rowStart + maxColumns : totalSegments;
+
+        // Print addresses above the squares
+        for (int i = rowStart; i < rowEnd; i++) {
+            printf("%3d   ", segments[i].address);
+        }
+        printf("\n");
+
+        // Print top line of squares
+        for (int i = rowStart; i < rowEnd; i++) {
+            printf("+---+ ");
+        }
+        printf("\n");
+
+        // Print middle line with 'x' or space based on isFree
+        for (int i = rowStart; i < rowEnd; i++) {
+            printf("| %c | ", segments[i].mutex == NULL ? ' ' : 'x');
+        }
+        printf("\n");
+
+        // Print bottom line of squares
+        for (int i = rowStart; i < rowEnd; i++) {
+            printf("+---+ ");
+        }
+        printf("\n");
+
+        // Add a blank line between rows for clarity
+        printf("\n");
     }
 }
 
