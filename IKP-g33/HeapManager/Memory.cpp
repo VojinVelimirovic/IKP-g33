@@ -163,7 +163,7 @@ void free_memory(void* address) {
     // za blockAddressHashMap koristimo njegovu originalnu adresu koja je zadata kao argument metode
     remove(blockAddressHashMap, (intptr_t)address);
     append(list_of_free_segments, block->start_address, block->segments_taken);
-
+    free(block);
     // brojimo slobodne segmente
     int freeSegmentsCount = 0;
     //for (int i = 0; i < totalSegments; i++) {
@@ -234,6 +234,18 @@ void free_memory(void* address) {
             }
         }
     }
+    TMemorySegment* new_segments = (TMemorySegment*)malloc(totalSegments * sizeof(TMemorySegment));
+
+    // Copy old segments to the new array
+    for (int i = 0; i < totalSegments; i++) {
+        new_segments[i] = segments[i];
+    }
+
+    // Free the old memory block
+    free(segments);
+
+    // Assign the new block to the original pointer
+    segments = new_segments;
     // Pravimo listu slobodnih segmenata iznova
     formListFromSegments(list_of_free_segments, segments, totalSegments);
 }

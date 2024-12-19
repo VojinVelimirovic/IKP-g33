@@ -278,7 +278,7 @@ int main()
     }
     WSACleanup();
     cleanup_segments();
-
+    scanf("%d");
     printf("Server closed. Press any key to exit\n");
     _getch();
 
