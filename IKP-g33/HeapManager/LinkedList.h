@@ -24,7 +24,7 @@ void addBlockToList(LinkedList* list, int start_address, int requiredSegments);
 void formListFromSegments(LinkedList* list, TMemorySegment* segments, int totalSegments);
 
 // oslobadjanje zauzetih resursa, cleanup
-void freeList(LinkedList* list);
+void freeList(LinkedList* list, bool everything);
 
 // prikaz trenutnog stanja liste
 void printList(const LinkedList* list);
