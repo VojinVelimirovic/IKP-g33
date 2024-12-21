@@ -40,15 +40,17 @@ void printList(const LinkedList* list) {
 }
 
 // Free the memory allocated for the linked list
-void freeList(LinkedList* list) {
+void freeList(LinkedList* list, bool everything) {
     ListNode* current = list->head;
     ListNode* nextNode;
     while (current) {
         nextNode = current->next;
         free(current);
         current = nextNode;
+        
     }
-    free(list);
+    if(everything)
+        free(list);
 }
 
 void addBlockToList(LinkedList* list, int start_address, int requiredSegments) {
@@ -118,7 +120,7 @@ void formListFromSegments(LinkedList* list, TMemorySegment* segments, int totalS
         printf("Error: Invalid list or segments array.\n");
         return;
     }
-
+    freeList(list, false);
     initList(list);
 
     int i = 0;
